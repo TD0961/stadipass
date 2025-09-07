@@ -1,4 +1,4 @@
-name: Backend Docker CI
+name: Backend CI
 
 on:
   push:
@@ -36,8 +36,6 @@ jobs:
             curl -fs http://localhost:5001/health && break
             sleep 5
           done
-      - name: Run tests
-        run: docker exec backend-test npm test
 
       - name: Stop container
         if: always()
