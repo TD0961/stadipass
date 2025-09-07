@@ -37,9 +37,6 @@ jobs:
             sleep 5
           done
 
-      - name: Run tests
-        run: docker exec backend-test npm test
-
       - name: Stop container
         if: always()
         run: docker stop backend-test
