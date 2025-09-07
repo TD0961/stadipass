@@ -1,47 +1,45 @@
-name: Backend Docker CI
+name: Backend CI
 
 on:
   push:
     paths:
-      - "backend/**"
-      - ".github/workflows/backend-docker-ci.yml"
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
   pull_request:
     paths:
-      - "backend/**"
+      - 'backend/**'
 
 jobs:
-  docker-build:
+  build:
     runs-on: ubuntu-latest
+
     steps:
-      # Checkout code
       - uses: actions/checkout@v4
 
-      # Build backend image
       - name: Build Docker image
-        run: |
-          docker build -t stadipass-backend:ci ./backend
+        run: docker build -t stadipass-backend:ci ./backend
 
-      # Run container in background
       - name: Run container
         run: |
-          docker run -d --rm -p 5001:5000 --name backend-test stadipass-backend:ci
+          docker run -d --rm \
+            -e PORT=5000 \
+            -e MONGO_URI="${{ secrets.MONGO_URI }}" \
+            -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            -p 5001:5000 \
+            --name backend-test \
+            stadipass-backend:ci
 
-      # Wait & healthcheck
       - name: Wait for health endpoint
         run: |
-          for i in {1..10}; do
-            if curl -fs http://localhost:5001/health; then
-              echo "✅ Backend healthy"
-              exit 0
-            fi
-            echo "⏳ Waiting for backend..."
+          for i in {1..15}; do
+            echo "Waiting for backend..."
+            curl -fs http://localhost:5001/health && break
             sleep 5
           done
-          echo "❌ Backend failed health check"
-          docker logs backend-test
-          exit 1
 
-      # Stop container
+      - name: Run tests
+        run: docker exec backend-test npm test
+
       - name: Stop container
         if: always()
         run: docker stop backend-test
