@@ -8,30 +8,25 @@ on:
   pull_request:
     paths:
       - 'backend/**'
-      - '.github/workflows/backend-docker-ci.yml'
 
 jobs:
-  docker-build:
+  docker-build-test:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build backend image
-        run: |
-          docker build \
-            -f backend/Dockerfile \
-            -t backend-ci-test \
-            backend
+      - name: Build Docker image
+        working-directory: backend
+        run: docker build -t backend-ci-test .
 
       - name: Run container
         run: |
-          docker run -d -p 5000:5000 --name backend-ci backend-ci-test
-          sleep 10 # give time for server to boot
+          docker run -d -p 5001:5000 --name backend-ci backend-ci-test
+          sleep 10
 
       - name: Health check
-        run: curl -f http://localhost:5000/health
+        run: curl -f http://localhost:5001/health
 
       - name: Stop container
         if: always()
