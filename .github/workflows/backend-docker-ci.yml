@@ -22,11 +22,16 @@ jobs:
 
       - name: Run container
         run: |
-          docker run -d -p 5001:5000 --name backend-ci backend-ci-test
-          sleep 10
+          docker run -d \
+            -p 5001:5000 \
+            -e PORT=5000 \
+            -e MONGO_URI=${{ secrets.MONGO_URI }} \
+            -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+            --name backend-ci backend-ci-test
+          sleep 15   # wait a bit longer for Node + Mongo connection
 
       - name: Health check
-        run: curl -f http://localhost:5000/health
+        run: curl -f http://localhost:5001/health
 
       - name: Stop container
         if: always()
