@@ -26,7 +26,7 @@ jobs:
           sleep 10
 
       - name: Health check
-        run: curl -f http://localhost:5001/health
+        run: curl -f http://localhost:5000/health
 
       - name: Stop container
         if: always()
