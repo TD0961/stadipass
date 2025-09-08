@@ -1,38 +1,59 @@
-name: Backend Docker CI
+name: backend-docker-ci
 
 on:
   push:
     paths:
-      - 'backend/**'
-      - '.github/workflows/backend-docker-ci.yml'
+      - "backend/**"
+      - ".github/workflows/backend-docker-ci.yml"
   pull_request:
     paths:
-      - 'backend/**'
+      - "backend/**"
+      - ".github/workflows/backend-docker-ci.yml"
 
 jobs:
-  docker-build-test:
+  backend:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      IMAGE_NAME: backend-ci:${{ github.sha }}
+      CONTAINER_NAME: backend-ci
+      PORT: 5000
+      HEALTH_URL: http://localhost:5000/health
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Build Docker image
-        working-directory: backend
-        run: docker build -t backend-ci-test .
+        run: docker build -t "$IMAGE_NAME" -f backend/Dockerfile backend
 
       - name: Run container
         run: |
-          docker run -d \
-            -p 5001:5000 \
-            -e PORT=5000 \
-            -e MONGO_URI=${{ secrets.MONGO_URI }} \
-            -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
-            --name backend-ci backend-ci-test
-          sleep 15   # wait a bit longer for Node + Mongo connection
+          docker run -d --name "$CONTAINER_NAME" \
+            -p "$PORT:$PORT" \
+            -e NODE_ENV=production \
+            -e PORT="$PORT" \
+            "$IMAGE_NAME"
 
       - name: Health check
-        run: curl -f http://localhost:5001/health
+        run: |
+          for i in {1..30}; do
+            if curl -fsS "$HEALTH_URL" >/dev/null; then
+              echo "Service is healthy"
+              exit 0
+            fi
+            echo "Waiting for service... ($i/30)"
+            sleep 2
+          done
+          echo "Service did not become healthy in time"
+          exit 1
+
+      - name: Print logs on failure
+        if: failure()
+        run: docker logs "$CONTAINER_NAME" || true
 
       - name: Stop container
         if: always()
-        run: docker stop backend-ci && docker rm backend-ci
+        run: |
+          docker stop "$CONTAINER_NAME" 2>/dev/null || true
+          docker rm "$CONTAINER_NAME" 2>/dev/null || true
+           
