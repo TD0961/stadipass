@@ -17,6 +17,8 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET || "dev-secret",
   corsOrigins: parseCorsOrigins(process.env.CORS_ORIGINS),
   appVersion: process.env.APP_VERSION || "dev",
+  adminEmail: process.env.ADMIN_EMAIL,
+  adminPassword: process.env.ADMIN_PASSWORD,
 } as const;
 
 

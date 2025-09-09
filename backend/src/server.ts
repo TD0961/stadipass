@@ -3,9 +3,12 @@ import cors from "cors";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import authRouter from "./routes/auth";
+import stadiumsRouter from "./routes/stadiums";
+import eventsRouter from "./routes/events";
 import { errorHandler } from "./middlewares/errorHandler";
 import { requestLogger } from "./middlewares/logger";
 import { connectWithRetry, setupGracefulShutdown } from "./utils/mongo";
+import { ensureAdminUser } from "./utils/bootstrap";
 import { env } from "./config/env";
 
 
@@ -31,7 +34,13 @@ app.get("/hello", (_, res) => {
 
 // Connect DB with retry and graceful shutdown (optional in CI)
 if (env.mongoUri) {
-  connectWithRetry(env.mongoUri).catch((err) =>
+  connectWithRetry(env.mongoUri).then(async () => {
+    try {
+      await ensureAdminUser();
+    } catch (e) {
+      console.error("❌ Failed to ensure admin user:", e);
+    }
+  }).catch((err) =>
     console.error("❌ MongoDB connection error:", err)
   );
   setupGracefulShutdown();
@@ -46,6 +55,8 @@ app.listen(PORT, () => {
 
 // Routes
 app.use("/api/auth", authRouter);
+app.use("/api/stadiums", stadiumsRouter);
+app.use("/api/events", eventsRouter);
 
 
 // Error handler should be last
