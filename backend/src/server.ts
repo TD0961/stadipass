@@ -6,21 +6,22 @@ import authRouter from "./routes/auth";
 import { errorHandler } from "./middlewares/errorHandler";
 import { requestLogger } from "./middlewares/logger";
 import { connectWithRetry, setupGracefulShutdown } from "./utils/mongo";
+import { env } from "./config/env";
 
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || "5000";
+const PORT = env.port;
 
 // Middleware
-app.use(cors({ origin: ["http://localhost:5173", "http://localhost:3000"], credentials: true })); 
+app.use(cors({ origin: env.corsOrigins, credentials: true })); 
 //app.use(requestLogger);
 app.use(express.json());
 
 // Health check route
 app.get("/health", (_, res) => {
-  res.json({ status: "OK", message: "StadiPass backend running 🚀" });
+  res.json({ status: "OK", version: env.appVersion, message: "StadiPass backend running 🚀" });
 });
 
 // Hello route
@@ -29,8 +30,8 @@ app.get("/hello", (_, res) => {
 });
 
 // Connect DB with retry and graceful shutdown (optional in CI)
-if (process.env.MONGO_URI) {
-  connectWithRetry(process.env.MONGO_URI).catch((err) =>
+if (env.mongoUri) {
+  connectWithRetry(env.mongoUri).catch((err) =>
     console.error("❌ MongoDB connection error:", err)
   );
   setupGracefulShutdown();

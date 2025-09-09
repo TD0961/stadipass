@@ -1,18 +1,77 @@
 import mongoose, { Schema, Document } from "mongoose";
 
+export enum UserRole {
+  CUSTOMER = "customer",
+  ADMIN = "admin",
+  STAFF = "staff"
+}
+
 export interface IUser extends Document {
   email: string;
   passwordHash: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  role: UserRole;
+  isActive: boolean;
+  lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
 
 const UserSchema = new Schema<IUser>(
   {
-    email: { type: String, required: true, unique: true, index: true },
-    passwordHash: { type: String, required: true }
+    email: { 
+      type: String, 
+      required: true, 
+      unique: true, 
+      index: true,
+      lowercase: true,
+      trim: true
+    },
+    passwordHash: { type: String, required: true },
+    firstName: { 
+      type: String, 
+      required: true, 
+      trim: true,
+      maxlength: 50
+    },
+    lastName: { 
+      type: String, 
+      required: true, 
+      trim: true,
+      maxlength: 50
+    },
+    phone: { 
+      type: String, 
+      trim: true,
+      match: /^[\+]?[1-9][\d]{0,15}$/ // Basic phone validation
+    },
+    role: { 
+      type: String, 
+      enum: Object.values(UserRole), 
+      default: UserRole.CUSTOMER 
+    },
+    isActive: { 
+      type: Boolean, 
+      default: true 
+    },
+    lastLoginAt: { type: Date }
   },
-  { timestamps: true }
+  { 
+    timestamps: true,
+    toJSON: {
+      transform: function(_doc, ret) {
+        const { passwordHash: _omitted, ...safe } = ret as any;
+        return safe;
+      }
+    }
+  }
 );
+
+// Index for efficient queries
+UserSchema.index({ email: 1 });
+UserSchema.index({ role: 1 });
+UserSchema.index({ isActive: 1 });
 
 export const User = mongoose.model<IUser>("User", UserSchema);
