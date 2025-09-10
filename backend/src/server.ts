@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import authRouter from "./routes/auth";
@@ -7,6 +8,7 @@ import stadiumsRouter from "./routes/stadiums";
 import eventsRouter from "./routes/events";
 import { errorHandler } from "./middlewares/errorHandler";
 import { requestLogger } from "./middlewares/logger";
+import { requestId, securityHeaders, authRateLimit, apiRateLimit } from "./middlewares/security";
 import { connectWithRetry, setupGracefulShutdown } from "./utils/mongo";
 import { ensureAdminUser } from "./utils/bootstrap";
 import { env } from "./config/env";
@@ -17,10 +19,13 @@ dotenv.config();
 const app = express();
 const PORT = env.port;
 
-// Middleware
+// Security middleware
+app.use(requestId);
+app.use(securityHeaders);
+app.use(express.json({ limit: '10mb' }));
+app.use(cookieParser());
 app.use(cors({ origin: env.corsOrigins, credentials: true })); 
 //app.use(requestLogger);
-app.use(express.json());
 
 // Health check route
 app.get("/health", (_, res) => {
@@ -53,10 +58,10 @@ app.listen(PORT, () => {
   console.log(`Backend server running on http://localhost:${PORT}`);
 });
 
-// Routes
-app.use("/api/auth", authRouter);
-app.use("/api/stadiums", stadiumsRouter);
-app.use("/api/events", eventsRouter);
+// Routes with rate limiting
+app.use("/api/auth", authRateLimit, authRouter);
+app.use("/api/stadiums", apiRateLimit, stadiumsRouter);
+app.use("/api/events", apiRateLimit, eventsRouter);
 
 
 // Error handler should be last

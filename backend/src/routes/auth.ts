@@ -2,9 +2,12 @@ import { Router } from "express";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { User } from "../models/User";
+import { Session } from "../models/Session";
 import { env } from "../config/env";
 import { requireAuth } from "../middlewares/auth";
+import { setRefreshTokenCookie, clearRefreshTokenCookie } from "../utils/cookies";
 
 const router = Router();
 
@@ -50,15 +53,96 @@ router.post("/login", async (req, res) => {
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
-    const token = jwt.sign(
+    // Generate refresh token
+    const refreshToken = crypto.randomBytes(32).toString('hex');
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+    
+    // Create session
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
+    
+    await Session.create({
+      userId: user._id,
+      refreshTokenHash,
+      userAgent: req.get('user-agent'),
+      ip: req.ip,
+      expiresAt
+    });
+
+    // Generate access token
+    const accessToken = jwt.sign(
       { sub: (user._id as any).toString(), email: user.email, role: user.role },
       env.jwtSecret,
-      { expiresIn: "1h" }
+      { expiresIn: "15m" }
     );
 
-    return res.json({ token });
+    // Set refresh token cookie
+    setRefreshTokenCookie(res, refreshToken);
+
+    return res.json({ token: accessToken });
   } catch (err: any) {
     if ((err as any)?.issues) return res.status(400).json({ error: "Invalid input", details: (err as any).issues });
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Public: refresh access token
+router.post("/refresh", async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refresh_token;
+    if (!refreshToken) return res.status(401).json({ error: "No refresh token" });
+
+    // Find session
+    const sessions = await Session.find({ revokedAt: null, expiresAt: { $gt: new Date() } }).lean();
+    let session = null;
+    
+    for (const s of sessions) {
+      const isValid = await bcrypt.compare(refreshToken, s.refreshTokenHash);
+      if (isValid) {
+        session = s;
+        break;
+      }
+    }
+    
+    if (!session) return res.status(401).json({ error: "Invalid refresh token" });
+
+    // Get user
+    const user = await User.findById(session.userId).lean();
+    if (!user) return res.status(401).json({ error: "User not found" });
+
+    // Generate new access token
+    const accessToken = jwt.sign(
+      { sub: user._id.toString(), email: user.email, role: user.role },
+      env.jwtSecret,
+      { expiresIn: "15m" }
+    );
+
+    return res.json({ token: accessToken });
+  } catch (err: any) {
+    console.error("Refresh token error:", err);
+    return res.status(500).json({ error: "Internal server error", details: err.message });
+  }
+});
+
+// Public: logout
+router.post("/logout", async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refresh_token;
+    if (refreshToken) {
+      // Revoke session
+      const sessions = await Session.find({ revokedAt: null }).lean();
+      for (const session of sessions) {
+        const isValid = await bcrypt.compare(refreshToken, session.refreshTokenHash);
+        if (isValid) {
+          await Session.findByIdAndUpdate(session._id, { revokedAt: new Date() });
+          break;
+        }
+      }
+    }
+    
+    clearRefreshTokenCookie(res);
+    return res.status(204).send();
+  } catch (err: any) {
     return res.status(500).json({ error: "Internal server error" });
   }
 });

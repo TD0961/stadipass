@@ -19,6 +19,8 @@ export const env = {
   appVersion: process.env.APP_VERSION || "dev",
   adminEmail: process.env.ADMIN_EMAIL,
   adminPassword: process.env.ADMIN_PASSWORD,
+  accessTokenTtl: process.env.ACCESS_TOKEN_TTL || "15m",
+  refreshTokenTtl: process.env.REFRESH_TOKEN_TTL || "30d",
 } as const;
 
 
