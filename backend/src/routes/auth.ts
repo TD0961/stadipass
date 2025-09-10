@@ -5,9 +5,11 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { User } from "../models/User";
 import { Session } from "../models/Session";
+import { PasswordReset } from "../models/PasswordReset";
 import { env } from "../config/env";
 import { requireAuth } from "../middlewares/auth";
 import { setRefreshTokenCookie, clearRefreshTokenCookie } from "../utils/cookies";
+import { sendEmail, getPasswordResetTemplate, getEmailVerificationTemplate } from "../services/emailService";
 
 const router = Router();
 
@@ -30,7 +32,32 @@ router.post("/signup", async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await User.create({ email, passwordHash, firstName, lastName, phone });
 
-    return res.status(201).json({ id: user._id, email: user.email });
+    // Generate email verification token
+    const verifyToken = crypto.randomBytes(32).toString('hex');
+    const verifyUrl = `${env.appBaseUrl}/api/auth/verify-email?token=${verifyToken}&email=${encodeURIComponent(email)}`;
+    
+    // Store verification token (we'll use PasswordReset model for simplicity)
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours
+    
+    await PasswordReset.create({
+      userId: user._id,
+      tokenHash: await bcrypt.hash(verifyToken, 10),
+      expiresAt,
+      ip: req.ip,
+      userAgent: req.get('user-agent')
+    });
+
+    // Send verification email
+    const emailTemplate = getEmailVerificationTemplate(verifyUrl, firstName);
+    emailTemplate.to = email;
+    await sendEmail(emailTemplate);
+
+    return res.status(201).json({ 
+      id: user._id, 
+      email: user.email,
+      message: "Account created. Please check your email to verify your account."
+    });
   } catch (err: any) {
     if ((err as any)?.issues) return res.status(400).json({ error: "Invalid input", details: (err as any).issues });
     return res.status(500).json({ error: "Internal server error" });
@@ -147,13 +174,160 @@ router.post("/logout", async (req, res) => {
   }
 });
 
+// Public: request password reset
+router.post("/request-reset", async (req, res) => {
+  try {
+    const { email } = z.object({ email: z.string().email() }).parse(req.body);
+    
+    const user = await User.findOne({ email }).lean();
+    if (!user) {
+      // Don't reveal if email exists or not
+      return res.json({ message: "If an account with that email exists, we've sent a password reset link." });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetUrl = `${env.appBaseUrl}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
+    
+    // Store reset token
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 15); // 15 minutes
+    
+    await PasswordReset.create({
+      userId: user._id,
+      tokenHash: await bcrypt.hash(resetToken, 10),
+      expiresAt,
+      ip: req.ip,
+      userAgent: req.get('user-agent')
+    });
+
+    // Send reset email
+    const emailTemplate = getPasswordResetTemplate(resetUrl, user.firstName);
+    emailTemplate.to = email;
+    await sendEmail(emailTemplate);
+
+    return res.json({ message: "If an account with that email exists, we've sent a password reset link." });
+  } catch (err: any) {
+    if (err?.issues) return res.status(400).json({ error: "Invalid input", details: err.issues });
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Public: reset password
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { email, token, newPassword } = z.object({
+      email: z.string().email(),
+      token: z.string().min(1),
+      newPassword: z.string().min(6)
+    }).parse(req.body);
+
+    // Find valid reset token
+    const resetRecords = await PasswordReset.find({ 
+      usedAt: null, 
+      expiresAt: { $gt: new Date() } 
+    }).lean();
+    
+    let validReset = null;
+    for (const reset of resetRecords) {
+      const isValid = await bcrypt.compare(token, reset.tokenHash);
+      if (isValid) {
+        validReset = reset;
+        break;
+      }
+    }
+
+    if (!validReset) {
+      return res.status(400).json({ error: "Invalid or expired reset token" });
+    }
+
+    // Verify user matches
+    const user = await User.findById(validReset.userId);
+    if (!user || user.email !== email) {
+      return res.status(400).json({ error: "Invalid reset token" });
+    }
+
+    // Update password
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await User.findByIdAndUpdate(user._id, { passwordHash });
+
+    // Mark token as used
+    await PasswordReset.findByIdAndUpdate(validReset._id, { usedAt: new Date() });
+
+    // Revoke all sessions for security
+    await Session.updateMany(
+      { userId: user._id, revokedAt: null },
+      { revokedAt: new Date() }
+    );
+
+    return res.json({ message: "Password reset successfully" });
+  } catch (err: any) {
+    if (err?.issues) return res.status(400).json({ error: "Invalid input", details: err.issues });
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Public: verify email
+router.post("/verify-email", async (req, res) => {
+  try {
+    const { email, token } = z.object({
+      email: z.string().email(),
+      token: z.string().min(1)
+    }).parse(req.body);
+
+    // Find valid verification token
+    const resetRecords = await PasswordReset.find({ 
+      usedAt: null, 
+      expiresAt: { $gt: new Date() } 
+    }).lean();
+    
+    let validReset = null;
+    for (const reset of resetRecords) {
+      const isValid = await bcrypt.compare(token, reset.tokenHash);
+      if (isValid) {
+        validReset = reset;
+        break;
+      }
+    }
+
+    if (!validReset) {
+      return res.status(400).json({ error: "Invalid or expired verification token" });
+    }
+
+    // Verify user matches
+    const user = await User.findById(validReset.userId);
+    if (!user || user.email !== email) {
+      return res.status(400).json({ error: "Invalid verification token" });
+    }
+
+    // Mark email as verified
+    await User.findByIdAndUpdate(user._id, { emailVerifiedAt: new Date() });
+
+    // Mark token as used
+    await PasswordReset.findByIdAndUpdate(validReset._id, { usedAt: new Date() });
+
+    return res.json({ message: "Email verified successfully" });
+  } catch (err: any) {
+    if (err?.issues) return res.status(400).json({ error: "Invalid input", details: err.issues });
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Protected: get current user from token
 router.get("/me", requireAuth, async (req, res) => {
   const auth = (req as any).auth as { sub?: string; email?: string } | undefined;
   if (!auth?.sub) return res.status(401).json({ error: "Unauthenticated" });
-  const user = await User.findById(auth.sub).select("email _id firstName lastName phone role").lean();
+  const user = await User.findById(auth.sub).select("email _id firstName lastName phone role emailVerifiedAt").lean();
   if (!user) return res.status(404).json({ error: "User not found" });
-  return res.json({ id: user._id, email: user.email, firstName: user.firstName, lastName: user.lastName, phone: user.phone, role: user.role });
+  return res.json({ 
+    id: user._id, 
+    email: user.email, 
+    firstName: user.firstName, 
+    lastName: user.lastName, 
+    phone: user.phone, 
+    role: user.role,
+    emailVerified: !!user.emailVerifiedAt
+  });
 });
 
 export default router;

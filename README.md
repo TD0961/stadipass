@@ -33,7 +33,7 @@ A modern, scalable stadium ticketing system built with Node.js, TypeScript, Mong
 2. **Configure environment**
    ```bash
    # Edit .env file
-   PORT=5000
+PORT=5000
    MONGO_URI=mongodb://localhost:27017/stadipass
    JWT_SECRET=your-super-secret-jwt-key
    ADMIN_EMAIL=admin@example.com

@@ -14,6 +14,7 @@ export interface IUser extends Document {
   phone?: string;
   role: UserRole;
   isActive: boolean;
+  emailVerifiedAt?: Date;
   lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -56,6 +57,7 @@ const UserSchema = new Schema<IUser>(
       type: Boolean, 
       default: true 
     },
+    emailVerifiedAt: { type: Date },
     lastLoginAt: { type: Date }
   },
   { 

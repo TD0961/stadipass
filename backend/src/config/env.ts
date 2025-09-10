@@ -21,6 +21,11 @@ export const env = {
   adminPassword: process.env.ADMIN_PASSWORD,
   accessTokenTtl: process.env.ACCESS_TOKEN_TTL || "15m",
   refreshTokenTtl: process.env.REFRESH_TOKEN_TTL || "30d",
+  appBaseUrl: process.env.APP_BASE_URL || "http://localhost:5000",
+  smtpHost: process.env.SMTP_HOST,
+  smtpPort: process.env.SMTP_PORT,
+  smtpUser: process.env.SMTP_USER,
+  smtpPass: process.env.SMTP_PASS,
 } as const;
 
 
