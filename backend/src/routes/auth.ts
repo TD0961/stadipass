@@ -48,6 +48,11 @@ router.post("/signup", async (req, res) => {
       userAgent: req.get('user-agent')
     });
 
+    // Log verification URL in non-production for testing
+    if (env.nodeEnv !== "production") {
+      console.log("📧 Email verification URL:", verifyUrl);
+    }
+
     // Send verification email
     const emailTemplate = getEmailVerificationTemplate(verifyUrl, firstName);
     emailTemplate.to = email;
@@ -80,8 +85,9 @@ router.post("/login", async (req, res) => {
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
-    // Generate refresh token
+    // Generate refresh token and token id
     const refreshToken = crypto.randomBytes(32).toString('hex');
+    const tokenId = crypto.randomUUID();
     const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
     
     // Create session
@@ -90,6 +96,7 @@ router.post("/login", async (req, res) => {
     
     await Session.create({
       userId: user._id,
+      tokenId,
       refreshTokenHash,
       userAgent: req.get('user-agent'),
       ip: req.ip,
@@ -104,7 +111,7 @@ router.post("/login", async (req, res) => {
     );
 
     // Set refresh token cookie
-    setRefreshTokenCookie(res, refreshToken);
+    setRefreshTokenCookie(res, refreshToken, tokenId);
 
     return res.json({ token: accessToken });
   } catch (err: any) {
@@ -117,18 +124,23 @@ router.post("/login", async (req, res) => {
 router.post("/refresh", async (req, res) => {
   try {
     const refreshToken = req.cookies.refresh_token;
+    const tokenId = req.cookies.refresh_token_id as string | undefined;
     if (!refreshToken) return res.status(401).json({ error: "No refresh token" });
-
-    // Find session
-    const sessions = await Session.find({ revokedAt: null, expiresAt: { $gt: new Date() } }).lean();
-    let session = null;
     
-    for (const s of sessions) {
-      const isValid = await bcrypt.compare(refreshToken, s.refreshTokenHash);
-      if (isValid) {
-        session = s;
-        break;
+    let session: any = null;
+    if (tokenId) {
+      session = await Session.findOne({ tokenId, revokedAt: null, expiresAt: { $gt: new Date() } });
+      if (!session) return res.status(401).json({ error: "Invalid session" });
+      const isValid = await bcrypt.compare(refreshToken, session.refreshTokenHash);
+      if (!isValid) return res.status(401).json({ error: "Invalid refresh token" });
+    } else {
+      // Backward-compatible fallback
+      const sessions = await Session.find({ revokedAt: null, expiresAt: { $gt: new Date() } }).lean();
+      for (const s of sessions) {
+        const isValid = await bcrypt.compare(refreshToken, s.refreshTokenHash);
+        if (isValid) { session = s; break; }
       }
+      if (!session) return res.status(401).json({ error: "Invalid refresh token" });
     }
     
     if (!session) return res.status(401).json({ error: "Invalid refresh token" });
@@ -144,6 +156,21 @@ router.post("/refresh", async (req, res) => {
       { expiresIn: "15m" }
     );
 
+    // Rotate refresh token
+    const newRefreshToken = crypto.randomBytes(32).toString('hex');
+    const newTokenId = crypto.randomUUID();
+    const newRefreshTokenHash = await bcrypt.hash(newRefreshToken, 10);
+    const newExpiresAt = new Date();
+    newExpiresAt.setDate(newExpiresAt.getDate() + 30);
+
+    await Session.findByIdAndUpdate((session as any)._id, {
+      tokenId: newTokenId,
+      refreshTokenHash: newRefreshTokenHash,
+      expiresAt: newExpiresAt
+    });
+
+    setRefreshTokenCookie(res, newRefreshToken, newTokenId);
+
     return res.json({ token: accessToken });
   } catch (err: any) {
     console.error("Refresh token error:", err);
@@ -155,15 +182,15 @@ router.post("/refresh", async (req, res) => {
 router.post("/logout", async (req, res) => {
   try {
     const refreshToken = req.cookies.refresh_token;
-    if (refreshToken) {
-      // Revoke session
+    const tokenId = req.cookies.refresh_token_id as string | undefined;
+    if (refreshToken && tokenId) {
+      await Session.findOneAndUpdate({ tokenId, revokedAt: null }, { revokedAt: new Date() });
+    } else if (refreshToken) {
+      // Fallback scan for older sessions without tokenId
       const sessions = await Session.find({ revokedAt: null }).lean();
       for (const session of sessions) {
         const isValid = await bcrypt.compare(refreshToken, session.refreshTokenHash);
-        if (isValid) {
-          await Session.findByIdAndUpdate(session._id, { revokedAt: new Date() });
-          break;
-        }
+        if (isValid) { await Session.findByIdAndUpdate(session._id, { revokedAt: new Date() }); break; }
       }
     }
     
@@ -200,6 +227,11 @@ router.post("/request-reset", async (req, res) => {
       ip: req.ip,
       userAgent: req.get('user-agent')
     });
+
+    // Log reset URL in non-production for testing
+    if (env.nodeEnv !== "production") {
+      console.log("📧 Password reset URL:", resetUrl);
+    }
 
     // Send reset email
     const emailTemplate = getPasswordResetTemplate(resetUrl, user.firstName);
@@ -284,6 +316,52 @@ router.post("/verify-email", async (req, res) => {
     let validReset = null;
     for (const reset of resetRecords) {
       const isValid = await bcrypt.compare(token, reset.tokenHash);
+      if (isValid) {
+        validReset = reset;
+        break;
+      }
+    }
+
+    if (!validReset) {
+      return res.status(400).json({ error: "Invalid or expired verification token" });
+    }
+
+    // Verify user matches
+    const user = await User.findById(validReset.userId);
+    if (!user || user.email !== email) {
+      return res.status(400).json({ error: "Invalid verification token" });
+    }
+
+    // Mark email as verified
+    await User.findByIdAndUpdate(user._id, { emailVerifiedAt: new Date() });
+
+    // Mark token as used
+    await PasswordReset.findByIdAndUpdate(validReset._id, { usedAt: new Date() });
+
+    return res.json({ message: "Email verified successfully" });
+  } catch (err: any) {
+    if (err?.issues) return res.status(400).json({ error: "Invalid input", details: err.issues });
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Public: verify email via GET link
+router.get("/verify-email", async (req, res) => {
+  try {
+    const { email, token } = z.object({
+      email: z.string().email(),
+      token: z.string().min(1)
+    }).parse({ email: req.query.email, token: req.query.token });
+
+    // Find valid verification token
+    const resetRecords = await PasswordReset.find({ 
+      usedAt: null, 
+      expiresAt: { $gt: new Date() } 
+    }).lean();
+    
+    let validReset: any = null;
+    for (const reset of resetRecords) {
+      const isValid = await bcrypt.compare(token as string, reset.tokenHash);
       if (isValid) {
         validReset = reset;
         break;

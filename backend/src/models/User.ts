@@ -71,8 +71,7 @@ const UserSchema = new Schema<IUser>(
   }
 );
 
-// Index for efficient queries
-UserSchema.index({ email: 1 });
+// Index for efficient queries (field-level indexes already defined where needed)
 UserSchema.index({ role: 1 });
 UserSchema.index({ isActive: 1 });
 

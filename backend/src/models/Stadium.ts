@@ -32,7 +32,7 @@ const StadiumSchema = new Schema<IStadium>(
   { timestamps: true }
 );
 
-StadiumSchema.index({ name: 1 }, { unique: true });
+// Field-level unique already applied on name
 
 export const Stadium = mongoose.model<IStadium>("Stadium", StadiumSchema);
 

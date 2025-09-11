@@ -102,6 +102,7 @@ Content-Type: application/json
 ```http
 POST /api/auth/refresh
 Cookie: refresh_token=...
+Cookie: refresh_token_id=...   # non-HTTP-only helper for fast session lookup
 ```
 
 **Response:**
@@ -132,9 +133,30 @@ Authorization: Bearer <token>
 ```http
 POST /api/auth/logout
 Cookie: refresh_token=...
+Cookie: refresh_token_id=...
 ```
 
 **Response:** `204 No Content`
+
+### Email Verification
+
+You can verify using either POST or GET (useful for email links):
+
+```http
+GET /api/auth/verify-email?token=<token>&email=<email>
+```
+
+```http
+POST /api/auth/verify-email
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "token": "..."
+}
+```
+
+In non-production, verification and reset URLs are also logged to the server console for easy testing.
 
 ### Stadiums (Admin Only)
 
@@ -212,6 +234,10 @@ Authorization: Bearer <token>
 
 # Filter by stadium
 GET /api/events?stadium=68c1af6817b7c8cebf7e18cc
+
+# Notes:
+# - Non-admin users only see events where isPublished=true
+# - Admin users can see all events
 ```
 
 #### Get Event

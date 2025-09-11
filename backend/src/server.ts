@@ -25,7 +25,7 @@ app.use(securityHeaders);
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 app.use(cors({ origin: env.corsOrigins, credentials: true })); 
-//app.use(requestLogger);
+app.use(requestLogger);
 
 // Health check route
 app.get("/health", (_, res) => {

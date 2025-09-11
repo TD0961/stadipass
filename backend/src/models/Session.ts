@@ -2,6 +2,7 @@ import mongoose, { Schema, Document, Types } from "mongoose";
 
 export interface ISession extends Document {
   userId: Types.ObjectId;
+  tokenId: string; // opaque identifier to find session quickly
   refreshTokenHash: string;
   userAgent?: string;
   ip?: string;
@@ -13,6 +14,7 @@ export interface ISession extends Document {
 
 const SessionSchema = new Schema<ISession>({
   userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+  tokenId: { type: String, required: true, unique: true, index: true },
   refreshTokenHash: { type: String, required: true, index: true },
   userAgent: { type: String, maxlength: 500 },
   ip: { type: String, maxlength: 45 },

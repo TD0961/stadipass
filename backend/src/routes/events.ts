@@ -42,6 +42,13 @@ router.get("/", requireAuth, async (req, res) => {
   const { stadium } = req.query as { stadium?: string };
   const filter: any = {};
   if (stadium) filter.stadium = stadium;
+
+  // Non-admin users should only see published events
+  const auth = (req as any).auth as { role?: string } | undefined;
+  if (!auth?.role || auth.role !== "admin") {
+    filter.isPublished = true;
+  }
+
   const list = await Event.find(filter).sort({ startsAt: 1 }).lean();
   return res.json(list);
 });
@@ -49,6 +56,13 @@ router.get("/", requireAuth, async (req, res) => {
 router.get("/:id", requireAuth, async (req, res) => {
   const one = await Event.findById(req.params.id).lean();
   if (!one) return res.status(404).json({ error: "Not found" });
+
+  // Non-admin users cannot view unpublished events
+  const auth = (req as any).auth as { role?: string } | undefined;
+  if ((!auth?.role || auth.role !== "admin") && !one.isPublished) {
+    return res.status(404).json({ error: "Not found" });
+  }
+
   return res.json(one);
 });
 
