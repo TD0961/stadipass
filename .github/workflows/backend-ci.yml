@@ -57,11 +57,11 @@ jobs:
           curl -s -o /dev/null -w "%{http_code}\n" -H 'Content-Type: application/json' \
             -d '{"email":"ciuser@example.com","password":"secret12","firstName":"CI","lastName":"User"}' \
             http://localhost:5000/api/auth/signup | grep -qE '201|409'
-          # Login and store cookies
-          curl -i -s -c cookies.txt -H 'Content-Type: application/json' \
+          # Login and store cookies (body only)
+          curl -s -c cookies.txt -H 'Content-Type: application/json' \
             -d '{"email":"ciuser@example.com","password":"secret12"}' \
-            http://localhost:5000/api/auth/login | tee login.out >/dev/null
-          TOKEN=$(grep -oE '\{"token":"[^"]+"\}' login.out | sed -e 's/^.*\{"token":"//' -e 's/"\}$//')
+            http://localhost:5000/api/auth/login > login.json
+          TOKEN=$(perl -ne 'print $1 if /"token":"([^"]+)"/' login.json)
           test -n "$TOKEN"
           # Me
           curl -s -H "Authorization: Bearer $TOKEN" http://localhost:5000/api/auth/me | grep -q 'email'
@@ -75,10 +75,10 @@ jobs:
         run: |
           set -euo pipefail
           # Admin login
-          curl -i -s -c admin_cookies.txt -H 'Content-Type: application/json' \
+          curl -s -c admin_cookies.txt -H 'Content-Type: application/json' \
             -d '{"email":"admin@example.com","password":"secret12"}' \
-            http://localhost:5000/api/auth/login | tee admin_login.out >/dev/null
-          ADMIN_TOKEN=$(grep -oE '\{"token":"[^"]+"\}' admin_login.out | sed -e 's/^.*\{"token":"//' -e 's/"\}$//')
+            http://localhost:5000/api/auth/login > admin_login.json
+          ADMIN_TOKEN=$(perl -ne 'print $1 if /"token":"([^"]+)"/' admin_login.json)
           test -n "$ADMIN_TOKEN"
           # Create stadium
           STADIUM=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
