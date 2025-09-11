@@ -240,6 +240,49 @@ GET /api/events?stadium=68c1af6817b7c8cebf7e18cc
 # - Admin users can see all events
 ```
 
+#### Filters and Pagination
+
+Query params supported on `GET /api/events`:
+
+- `stadium`: Stadium ID
+- `from`: ISO date/time to filter events starting on/after
+- `to`: ISO date/time to filter events starting on/before
+- `isPublished` (admin only): `true|false`
+- `page`: page number (default `1`)
+- `limit`: page size (default `20`, max `100`)
+
+Response shape:
+
+```json
+{
+  "items": [ /* events */ ],
+  "page": 1,
+  "limit": 20,
+  "total": 42
+}
+```
+
+#### Publish / Unpublish (Admin Only)
+
+```http
+POST /api/events/:id/publish
+Authorization: Bearer <admin-token>
+```
+
+```http
+POST /api/events/:id/unpublish
+Authorization: Bearer <admin-token>
+```
+
+Event documents include:
+
+```json
+{
+  "isPublished": true,
+  "publishedAt": "2025-09-11T10:00:00.000Z"
+}
+```
+
 #### Get Event
 ```http
 GET /api/events/:id

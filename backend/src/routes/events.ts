@@ -39,18 +39,35 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
 });
 
 router.get("/", requireAuth, async (req, res) => {
-  const { stadium } = req.query as { stadium?: string };
+  const { stadium, from, to, isPublished, page = "1", limit = "20" } = req.query as any;
   const filter: any = {};
   if (stadium) filter.stadium = stadium;
+  if (from || to) {
+    filter.startsAt = {};
+    if (from) filter.startsAt.$gte = new Date(from);
+    if (to) filter.startsAt.$lte = new Date(to);
+  }
 
-  // Non-admin users should only see published events
   const auth = (req as any).auth as { role?: string } | undefined;
   if (!auth?.role || auth.role !== "admin") {
     filter.isPublished = true;
+  } else if (typeof isPublished !== "undefined") {
+    filter.isPublished = isPublished === "true";
   }
 
-  const list = await Event.find(filter).sort({ startsAt: 1 }).lean();
-  return res.json(list);
+  const pageNum = Math.max(parseInt(page as string, 10) || 1, 1);
+  const limitNum = Math.min(Math.max(parseInt(limit as string, 10) || 20, 1), 100);
+
+  const [items, total] = await Promise.all([
+    Event.find(filter)
+      .sort({ startsAt: 1 })
+      .skip((pageNum - 1) * limitNum)
+      .limit(limitNum)
+      .lean(),
+    Event.countDocuments(filter)
+  ]);
+
+  return res.json({ items, page: pageNum, limit: limitNum, total });
 });
 
 router.get("/:id", requireAuth, async (req, res) => {
@@ -73,6 +90,10 @@ router.patch("/:id", requireAuth, requireAdmin, async (req, res) => {
       const exists = await Stadium.exists({ _id: input.stadium });
       if (!exists) return res.status(400).json({ error: "Invalid stadium" });
     }
+    // Adjust publishedAt if isPublished flips
+    if (typeof (input as any).isPublished !== "undefined") {
+      (input as any).publishedAt = (input as any).isPublished ? new Date() : undefined;
+    }
     const updated = await Event.findByIdAndUpdate(req.params.id, input, { new: true }).lean();
     if (!updated) return res.status(404).json({ error: "Not found" });
     return res.json(updated);
@@ -80,6 +101,19 @@ router.patch("/:id", requireAuth, requireAdmin, async (req, res) => {
     if (err?.issues) return res.status(400).json({ error: "Invalid input", details: err.issues });
     return res.status(500).json({ error: "Internal server error" });
   }
+});
+
+// Publish/unpublish endpoints
+router.post("/:id/publish", requireAuth, requireAdmin, async (req, res) => {
+  const updated = await Event.findByIdAndUpdate(req.params.id, { isPublished: true, publishedAt: new Date() }, { new: true }).lean();
+  if (!updated) return res.status(404).json({ error: "Not found" });
+  return res.json(updated);
+});
+
+router.post("/:id/unpublish", requireAuth, requireAdmin, async (req, res) => {
+  const updated = await Event.findByIdAndUpdate(req.params.id, { isPublished: false, publishedAt: undefined }, { new: true }).lean();
+  if (!updated) return res.status(404).json({ error: "Not found" });
+  return res.json(updated);
 });
 
 router.delete("/:id", requireAuth, requireAdmin, async (req, res) => {

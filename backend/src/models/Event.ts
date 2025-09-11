@@ -13,6 +13,7 @@ export interface IEvent extends Document {
   endsAt?: Date;            // optional end time
   ticketCategories: ITicketCategory[];
   isPublished: boolean;
+  publishedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,9 +30,11 @@ const EventSchema = new Schema<IEvent>({
   startsAt: { type: Date, required: true },
   endsAt: { type: Date },
   ticketCategories: { type: [TicketCategorySchema], default: [] },
-  isPublished: { type: Boolean, default: false }
+  isPublished: { type: Boolean, default: false },
+  publishedAt: { type: Date }
 }, { timestamps: true });
 
 EventSchema.index({ stadium: 1, startsAt: 1 });
+EventSchema.index({ isPublished: 1, startsAt: 1 });
 
 export const Event = mongoose.model<IEvent>("Event", EventSchema);

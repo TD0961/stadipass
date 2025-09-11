@@ -37,6 +37,8 @@ jobs:
           CORS_ORIGINS: http://localhost:5173,http://localhost:3000
           APP_VERSION: ci
           MONGO_URI: mongodb://localhost:27017/stadipass_ci
+          ADMIN_EMAIL: admin@example.com
+          ADMIN_PASSWORD: secret12
         run: |
           nohup node dist/server.js > server.log 2>&1 &
           echo $! > backend.pid
@@ -67,6 +69,35 @@ jobs:
           curl -s -i -b cookies.txt -X POST http://localhost:5000/api/auth/refresh | grep -q 'token'
           # Logout
           curl -s -i -b cookies.txt -X POST http://localhost:5000/api/auth/logout | grep -q '204'
+
+      - name: Smoke test events visibility and publish flow
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          # Admin login
+          curl -i -s -c admin_cookies.txt -H 'Content-Type: application/json' \
+            -d '{"email":"admin@example.com","password":"secret12"}' \
+            http://localhost:5000/api/auth/login | tee admin_login.out >/dev/null
+          ADMIN_TOKEN=$(grep -oE '\{"token":"[^"]+"\}' admin_login.out | sed -e 's/^.*\{"token":"//' -e 's/"\}$//')
+          test -n "$ADMIN_TOKEN"
+          # Create stadium
+          STADIUM=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
+            -d '{"name":"CI Arena","capacity":10000}' \
+            http://localhost:5000/api/stadiums)
+          STADIUM_ID=$(echo "$STADIUM" | grep -oE '"_id":"[^"]+"' | sed -e 's/"_id":"//' -e 's/"//')
+          test -n "$STADIUM_ID"
+          # Create event (unpublished)
+          EVENT=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
+            -d '{"stadium":"'"$STADIUM_ID"'","title":"CI Match","startsAt":"2030-01-01T10:00:00.000Z","ticketCategories":[{"name":"VIP","price":100,"quota":10}],"isPublished":false}' \
+            http://localhost:5000/api/events)
+          EVENT_ID=$(echo "$EVENT" | grep -oE '"_id":"[^"]+"' | sed -e 's/"_id":"//' -e 's/"//')
+          test -n "$EVENT_ID"
+          # Non-admin should not see event
+          curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:5000/api/events?stadium=$STADIUM_ID" | grep -q '"items":\[\]' || (echo "Expected no items for non-admin"; exit 1)
+          # Publish event
+          curl -s -H "Authorization: Bearer $ADMIN_TOKEN" -X POST http://localhost:5000/api/events/$EVENT_ID/publish | grep -q '"isPublished":true'
+          # Now non-admin should see it
+          curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:5000/api/events?stadium=$STADIUM_ID" | grep -q '"items":\['
 
       - name: Show server logs on failure
         if: failure()
