@@ -59,11 +59,11 @@ jobs:
       - name: Smoke test auth (signup, login, me, refresh, logout)
         working-directory: backend
         env:
-          TEST_USER_EMAIL: ciuser@example.com
+          TEST_USER_EMAIL: ciuser-${{ github.run_id }}@example.com
           TEST_USER_PASSWORD: secret12
         run: |
           set -euo pipefail
-          # Signup
+          # Signup (handle existing user)
           echo "Testing user signup..."
           SIGNUP_RESPONSE=$(curl -s -w "%{http_code}" -H 'Content-Type: application/json' \
             -d "{\"email\":\"$TEST_USER_EMAIL\",\"password\":\"$TEST_USER_PASSWORD\",\"firstName\":\"CI\",\"lastName\":\"User\"}" \
@@ -72,21 +72,36 @@ jobs:
           SIGNUP_BODY=$(echo "$SIGNUP_RESPONSE" | head -c -4)
           echo "Signup response code: $SIGNUP_CODE"
           echo "Signup response body: $SIGNUP_BODY"
-          if [[ "$SIGNUP_CODE" != "201" && "$SIGNUP_CODE" != "409" ]]; then
+          if [[ "$SIGNUP_CODE" == "201" ]]; then
+            echo "New user created successfully"
+          elif [[ "$SIGNUP_CODE" == "409" ]]; then
+            echo "User already exists, continuing with login test"
+          else
             echo "Signup failed with code $SIGNUP_CODE"
             exit 1
           fi
-          echo "Signup successful"
           
           # Login and store cookies
           echo "Testing user login..."
-          curl -s -c cookies.txt -H 'Content-Type: application/json' \
+          LOGIN_RESPONSE=$(curl -s -w "%{http_code}" -c cookies.txt -H 'Content-Type: application/json' \
             -d "{\"email\":\"$TEST_USER_EMAIL\",\"password\":\"$TEST_USER_PASSWORD\"}" \
-            http://localhost:5000/api/auth/login > login.json
-          echo "Login response:" && cat login.json
+            http://localhost:5000/api/auth/login)
+          LOGIN_CODE=$(echo "$LOGIN_RESPONSE" | tail -c 4)
+          LOGIN_BODY=$(echo "$LOGIN_RESPONSE" | head -c -4)
+          echo "Login response code: $LOGIN_CODE"
+          echo "Login response body: $LOGIN_BODY"
+          echo "$LOGIN_BODY" > login.json
+          
+          if [[ "$LOGIN_CODE" != "200" ]]; then
+            echo "Login failed with code $LOGIN_CODE"
+            echo "Response: $LOGIN_BODY"
+            exit 1
+          fi
+          
           TOKEN=$(perl -ne 'print $1 if /"token":"([^"]+)"/' login.json)
           if [ -z "$TOKEN" ]; then
             echo "Failed to extract token from login response"
+            echo "Full response: $LOGIN_BODY"
             exit 1
           fi
           echo "Token extracted successfully: ${TOKEN:0:20}..."
@@ -116,7 +131,7 @@ jobs:
       - name: Smoke test events visibility and publish flow
         working-directory: backend
         env:
-          TEST_USER_EMAIL: ciuser@example.com
+          TEST_USER_EMAIL: ciuser-${{ github.run_id }}@example.com
           TEST_USER_PASSWORD: secret12
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
