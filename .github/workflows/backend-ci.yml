@@ -63,21 +63,55 @@ jobs:
         run: |
           set -euo pipefail
           # Signup
-          curl -s -o /dev/null -w "%{http_code}\n" -H 'Content-Type: application/json' \
+          echo "Testing user signup..."
+          SIGNUP_RESPONSE=$(curl -s -w "%{http_code}" -H 'Content-Type: application/json' \
             -d '{"email":"ciuser@example.com","password":"secret12","firstName":"CI","lastName":"User"}' \
-            http://localhost:5000/api/auth/signup | grep -qE '201|409'
+            http://localhost:5000/api/auth/signup)
+          SIGNUP_CODE=$(echo "$SIGNUP_RESPONSE" | tail -c 4)
+          SIGNUP_BODY=$(echo "$SIGNUP_RESPONSE" | head -c -4)
+          echo "Signup response code: $SIGNUP_CODE"
+          echo "Signup response body: $SIGNUP_BODY"
+          if [[ "$SIGNUP_CODE" != "201" && "$SIGNUP_CODE" != "409" ]]; then
+            echo "Signup failed with code $SIGNUP_CODE"
+            exit 1
+          fi
+          echo "Signup successful"
+          
           # Login and store cookies (body only)
+          echo "Testing user login..."
           curl -s -c cookies.txt -H 'Content-Type: application/json' \
             -d '{"email":"ciuser@example.com","password":"secret12"}' \
             http://localhost:5000/api/auth/login > login.json
+          echo "Login response:"
+          cat login.json
           TOKEN=$(perl -ne 'print $1 if /"token":"([^"]+)"/' login.json)
-          test -n "$TOKEN"
+          if [ -z "$TOKEN" ]; then
+            echo "Failed to extract token from login response"
+            exit 1
+          fi
+          echo "Token extracted successfully: ${TOKEN:0:20}..."
+          
           # Me
-          curl -s -H "Authorization: Bearer $TOKEN" http://localhost:5000/api/auth/me | grep -q 'email'
+          echo "Testing /me endpoint..."
+          ME_RESPONSE=$(curl -s -H "Authorization: Bearer $TOKEN" http://localhost:5000/api/auth/me)
+          echo "Me response: $ME_RESPONSE"
+          echo "$ME_RESPONSE" | grep -q 'email' || (echo "Me endpoint failed"; exit 1)
+          echo "Me endpoint successful"
+          
           # Refresh
-          curl -s -i -b cookies.txt -X POST http://localhost:5000/api/auth/refresh | grep -q 'token'
+          echo "Testing refresh endpoint..."
+          REFRESH_RESPONSE=$(curl -s -i -b cookies.txt -X POST http://localhost:5000/api/auth/refresh)
+          echo "Refresh response: $REFRESH_RESPONSE"
+          echo "$REFRESH_RESPONSE" | grep -q 'token' || (echo "Refresh endpoint failed"; exit 1)
+          echo "Refresh endpoint successful"
+          
           # Logout
-          curl -s -i -b cookies.txt -X POST http://localhost:5000/api/auth/logout | grep -q '204'
+          echo "Testing logout endpoint..."
+          LOGOUT_RESPONSE=$(curl -s -i -b cookies.txt -X POST http://localhost:5000/api/auth/logout)
+          echo "Logout response: $LOGOUT_RESPONSE"
+          echo "$LOGOUT_RESPONSE" | grep -q '204' || (echo "Logout endpoint failed"; exit 1)
+          echo "Logout endpoint successful"
+          echo "All auth tests passed!"
 
       - name: Smoke test events visibility and publish flow
         working-directory: backend
