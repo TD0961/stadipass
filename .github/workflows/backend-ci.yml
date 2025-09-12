@@ -27,10 +27,6 @@ jobs:
         working-directory: backend
         run: npm run build
 
-      # Start MongoDB container only if MONGO_URI secret is not set
-      - name: Start MongoDB (local docker)
-        if: ${{ secrets.MONGO_URI == '' }}
-        run: docker run -d --name mongo -p 27017:27017 mongo:6
 
       - name: Start backend
         working-directory: backend
@@ -39,7 +35,7 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           CORS_ORIGINS: ${{ secrets.CORS_ORIGINS }}
           APP_VERSION: ${{ secrets.APP_VERSION }}
-          MONGO_URI: ${{ secrets.MONGO_URI != '' && secrets.MONGO_URI || 'mongodb://localhost:27017/stadipass_ci' }}
+          MONGO_URI: ${{ secrets.MONGO_URI }}
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
         run: |
@@ -195,4 +191,3 @@ jobs:
         if: always()
         run: |
           if [ -f backend/backend.pid ]; then kill $(cat backend/backend.pid) || true; fi
-          docker rm -f mongo || true
