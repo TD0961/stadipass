@@ -37,6 +37,14 @@ app.get("/hello", (_, res) => {
   res.json({ message: "Hello from StadiPass Backend" });
 });
 
+// Routes with rate limiting
+app.use("/api/auth", authRateLimit, authRouter);
+app.use("/api/stadiums", apiRateLimit, stadiumsRouter);
+app.use("/api/events", apiRateLimit, eventsRouter);
+
+// Error handler should be last
+app.use(errorHandler);
+
 // Connect DB with retry and graceful shutdown (optional in CI)
 if (env.mongoUri) {
   connectWithRetry(env.mongoUri).then(async () => {
@@ -57,15 +65,6 @@ if (env.mongoUri) {
 app.listen(PORT, () => {
   console.log(`Backend server running on http://localhost:${PORT}`);
 });
-
-// Routes with rate limiting
-app.use("/api/auth", authRateLimit, authRouter);
-app.use("/api/stadiums", apiRateLimit, stadiumsRouter);
-app.use("/api/events", apiRateLimit, eventsRouter);
-
-
-// Error handler should be last
-app.use(errorHandler);
 
 
   
