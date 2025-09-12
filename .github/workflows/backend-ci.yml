@@ -152,25 +152,36 @@ jobs:
           sudo apt-get install -y jq >/dev/null 2>&1 || true
           
           # Wait to avoid rate limiting from previous auth tests
-          echo "Waiting 5 seconds to avoid rate limiting..."
-          sleep 5
+          echo "Waiting 15 seconds to avoid rate limiting..."
+          sleep 15
           
-          # User login
+          # User login with retry
           echo "Testing user login for events test..."
-          USER_LOGIN_RESPONSE=$(curl -s -w "%{http_code}" -c user_cookies.txt -H 'Content-Type: application/json' \
-            -d "{\"email\":\"$TEST_USER_EMAIL\",\"password\":\"$TEST_USER_PASSWORD\"}" \
-            http://localhost:5000/api/auth/login)
-          USER_LOGIN_CODE=$(echo "$USER_LOGIN_RESPONSE" | tail -c 4)
-          USER_LOGIN_BODY=$(echo "$USER_LOGIN_RESPONSE" | head -c -4)
-          echo "User login response code: $USER_LOGIN_CODE"
-          echo "User login response body: $USER_LOGIN_BODY"
-          echo "$USER_LOGIN_BODY" > user_login.json
-          
-          if [[ "$USER_LOGIN_CODE" != "200" ]]; then
-            echo "User login failed with code $USER_LOGIN_CODE"
-            echo "Response: $USER_LOGIN_BODY"
-            exit 1
-          fi
+          for attempt in 1 2 3; do
+            echo "User login attempt $attempt..."
+            USER_LOGIN_RESPONSE=$(curl -s -w "%{http_code}" -c user_cookies.txt -H 'Content-Type: application/json' \
+              -d "{\"email\":\"$TEST_USER_EMAIL\",\"password\":\"$TEST_USER_PASSWORD\"}" \
+              http://localhost:5000/api/auth/login)
+            USER_LOGIN_CODE=$(echo "$USER_LOGIN_RESPONSE" | tail -c 4)
+            USER_LOGIN_BODY=$(echo "$USER_LOGIN_RESPONSE" | head -c -4)
+            echo "User login response code: $USER_LOGIN_CODE"
+            echo "User login response body: $USER_LOGIN_BODY"
+            
+            if [[ "$USER_LOGIN_CODE" == "200" ]]; then
+              echo "User login successful on attempt $attempt"
+              echo "$USER_LOGIN_BODY" > user_login.json
+              break
+            elif [[ "$USER_LOGIN_CODE" == "429" && $attempt -lt 3 ]]; then
+              echo "Rate limited, waiting 10 seconds before retry..."
+              sleep 10
+            else
+              echo "User login failed with code $USER_LOGIN_CODE on attempt $attempt"
+              echo "Response: $USER_LOGIN_BODY"
+              if [[ $attempt -eq 3 ]]; then
+                exit 1
+              fi
+            fi
+          done
           
           TOKEN=$(perl -ne 'print $1 if /"token":"([^"]+)"/' user_login.json)
           if [ -z "$TOKEN" ]; then
@@ -180,22 +191,33 @@ jobs:
           fi
           echo "User token extracted successfully: ${TOKEN:0:20}..."
 
-          # Admin login
+          # Admin login with retry
           echo "Attempting admin login..."
-          ADMIN_LOGIN_RESPONSE=$(curl -s -w "%{http_code}" -c admin_cookies.txt -H 'Content-Type: application/json' \
-            -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}" \
-            http://localhost:5000/api/auth/login)
-          ADMIN_LOGIN_CODE=$(echo "$ADMIN_LOGIN_RESPONSE" | tail -c 4)
-          ADMIN_LOGIN_BODY=$(echo "$ADMIN_LOGIN_RESPONSE" | head -c -4)
-          echo "Admin login response code: $ADMIN_LOGIN_CODE"
-          echo "Admin login response body: $ADMIN_LOGIN_BODY"
-          echo "$ADMIN_LOGIN_BODY" > admin_login.json
-          
-          if [[ "$ADMIN_LOGIN_CODE" != "200" ]]; then
-            echo "Admin login failed with code $ADMIN_LOGIN_CODE"
-            echo "Response: $ADMIN_LOGIN_BODY"
-            exit 1
-          fi
+          for attempt in 1 2 3; do
+            echo "Admin login attempt $attempt..."
+            ADMIN_LOGIN_RESPONSE=$(curl -s -w "%{http_code}" -c admin_cookies.txt -H 'Content-Type: application/json' \
+              -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}" \
+              http://localhost:5000/api/auth/login)
+            ADMIN_LOGIN_CODE=$(echo "$ADMIN_LOGIN_RESPONSE" | tail -c 4)
+            ADMIN_LOGIN_BODY=$(echo "$ADMIN_LOGIN_RESPONSE" | head -c -4)
+            echo "Admin login response code: $ADMIN_LOGIN_CODE"
+            echo "Admin login response body: $ADMIN_LOGIN_BODY"
+            
+            if [[ "$ADMIN_LOGIN_CODE" == "200" ]]; then
+              echo "Admin login successful on attempt $attempt"
+              echo "$ADMIN_LOGIN_BODY" > admin_login.json
+              break
+            elif [[ "$ADMIN_LOGIN_CODE" == "429" && $attempt -lt 3 ]]; then
+              echo "Rate limited, waiting 10 seconds before retry..."
+              sleep 10
+            else
+              echo "Admin login failed with code $ADMIN_LOGIN_CODE on attempt $attempt"
+              echo "Response: $ADMIN_LOGIN_BODY"
+              if [[ $attempt -eq 3 ]]; then
+                exit 1
+              fi
+            fi
+          done
           
           ADMIN_TOKEN=$(perl -ne 'print $1 if /"token":"([^"]+)"/' admin_login.json)
           if [ -z "$ADMIN_TOKEN" ]; then
