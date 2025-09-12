@@ -50,6 +50,14 @@ jobs:
             if curl -sf http://localhost:5000/health > /dev/null; then
               echo "Backend is healthy"; exit 0; fi; sleep 1; done; exit 1
 
+      - name: Wait for admin user bootstrap
+        run: |
+          for i in {1..20}; do
+            if curl -sf -H 'Content-Type: application/json' \
+              -d '{"email":"admin@example.com","password":"secret12"}' \
+              http://localhost:5000/api/auth/login > /dev/null 2>&1; then
+              echo "Admin user ready"; exit 0; fi; sleep 2; done; exit 1
+
       - name: Smoke test auth (signup, login, me, refresh, logout)
         working-directory: backend
         run: |
@@ -84,23 +92,44 @@ jobs:
           TOKEN=$(perl -ne 'print $1 if /"token":"([^"]+)"/' user_login.json)
           test -n "$TOKEN"
           # Admin login
+          echo "Attempting admin login..."
           curl -s -c admin_cookies.txt -H 'Content-Type: application/json' \
             -d '{"email":"admin@example.com","password":"secret12"}' \
             http://localhost:5000/api/auth/login > admin_login.json
+          echo "Admin login response:"
+          cat admin_login.json
           ADMIN_TOKEN=$(perl -ne 'print $1 if /"token":"([^"]+)"/' admin_login.json)
-          test -n "$ADMIN_TOKEN"
+          if [ -z "$ADMIN_TOKEN" ]; then
+            echo "Failed to extract admin token from response"
+            exit 1
+          fi
+          echo "Admin token extracted successfully"
           # Create stadium
+          echo "Creating stadium..."
           STADIUM=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
             -d '{"name":"CI Arena","capacity":10000}' \
             http://localhost:5000/api/stadiums)
+          echo "Stadium creation response:"
+          echo "$STADIUM"
           STADIUM_ID=$(echo "$STADIUM" | jq -r '._id')
-          test -n "$STADIUM_ID"
+          if [ -z "$STADIUM_ID" ] || [ "$STADIUM_ID" = "null" ]; then
+            echo "Failed to create stadium or extract stadium ID"
+            exit 1
+          fi
+          echo "Stadium created with ID: $STADIUM_ID"
           # Create event (unpublished)
+          echo "Creating event..."
           EVENT=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
             -d '{"stadium":"'"$STADIUM_ID"'","title":"CI Match","startsAt":"2030-01-01T10:00:00.000Z","ticketCategories":[{"name":"VIP","price":100,"quota":10}],"isPublished":false}' \
             http://localhost:5000/api/events)
+          echo "Event creation response:"
+          echo "$EVENT"
           EVENT_ID=$(echo "$EVENT" | jq -r '._id')
-          test -n "$EVENT_ID"
+          if [ -z "$EVENT_ID" ] || [ "$EVENT_ID" = "null" ]; then
+            echo "Failed to create event or extract event ID"
+            exit 1
+          fi
+          echo "Event created with ID: $EVENT_ID"
           # Non-admin should not see event
           BEFORE=$(curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:5000/api/events?stadium=$STADIUM_ID")
           [ "$(echo "$BEFORE" | jq -r '.items | length')" -eq 0 ] || (echo "Expected no items for non-admin"; echo "$BEFORE"; exit 1)
