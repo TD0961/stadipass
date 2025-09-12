@@ -38,8 +38,8 @@ jobs:
           CORS_ORIGINS: http://localhost:5173,http://localhost:3000
           APP_VERSION: ci
           MONGO_URI: mongodb://localhost:27017/stadipass_ci
-          ADMIN_EMAIL: admin@example.com
-          ADMIN_PASSWORD: secret12
+          ADMIN_EMAIL: ci-admin@stadipass.com
+          ADMIN_PASSWORD: ci-admin-2024
         run: |
           nohup node dist/server.js > server.log 2>&1 &
           echo $! > backend.pid
@@ -54,7 +54,7 @@ jobs:
         run: |
           for i in {1..20}; do
             if curl -sf -H 'Content-Type: application/json' \
-              -d '{"email":"admin@example.com","password":"secret12"}' \
+              -d '{"email":"ci-admin@stadipass.com","password":"ci-admin-2024"}' \
               http://localhost:5000/api/auth/login > /dev/null 2>&1; then
               echo "Admin user ready"; exit 0; fi; sleep 2; done; exit 1
 
@@ -94,7 +94,7 @@ jobs:
           # Admin login
           echo "Attempting admin login..."
           curl -s -c admin_cookies.txt -H 'Content-Type: application/json' \
-            -d '{"email":"admin@example.com","password":"secret12"}' \
+            -d '{"email":"ci-admin@stadipass.com","password":"ci-admin-2024"}' \
             http://localhost:5000/api/auth/login > admin_login.json
           echo "Admin login response:"
           cat admin_login.json
