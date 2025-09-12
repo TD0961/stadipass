@@ -154,25 +154,56 @@ jobs:
           # Wait to avoid rate limiting from previous auth tests
           echo "Waiting 5 seconds to avoid rate limiting..."
           sleep 5
+          
           # User login
-          curl -s -c user_cookies.txt -H 'Content-Type: application/json' \
+          echo "Testing user login for events test..."
+          USER_LOGIN_RESPONSE=$(curl -s -w "%{http_code}" -c user_cookies.txt -H 'Content-Type: application/json' \
             -d "{\"email\":\"$TEST_USER_EMAIL\",\"password\":\"$TEST_USER_PASSWORD\"}" \
-            http://localhost:5000/api/auth/login > user_login.json
+            http://localhost:5000/api/auth/login)
+          USER_LOGIN_CODE=$(echo "$USER_LOGIN_RESPONSE" | tail -c 4)
+          USER_LOGIN_BODY=$(echo "$USER_LOGIN_RESPONSE" | head -c -4)
+          echo "User login response code: $USER_LOGIN_CODE"
+          echo "User login response body: $USER_LOGIN_BODY"
+          echo "$USER_LOGIN_BODY" > user_login.json
+          
+          if [[ "$USER_LOGIN_CODE" != "200" ]]; then
+            echo "User login failed with code $USER_LOGIN_CODE"
+            echo "Response: $USER_LOGIN_BODY"
+            exit 1
+          fi
+          
           TOKEN=$(perl -ne 'print $1 if /"token":"([^"]+)"/' user_login.json)
-          test -n "$TOKEN"
+          if [ -z "$TOKEN" ]; then
+            echo "Failed to extract user token from login response"
+            echo "Full response: $USER_LOGIN_BODY"
+            exit 1
+          fi
+          echo "User token extracted successfully: ${TOKEN:0:20}..."
 
           # Admin login
           echo "Attempting admin login..."
-          curl -s -c admin_cookies.txt -H 'Content-Type: application/json' \
+          ADMIN_LOGIN_RESPONSE=$(curl -s -w "%{http_code}" -c admin_cookies.txt -H 'Content-Type: application/json' \
             -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}" \
-            http://localhost:5000/api/auth/login > admin_login.json
-          echo "Admin login response:" && cat admin_login.json
+            http://localhost:5000/api/auth/login)
+          ADMIN_LOGIN_CODE=$(echo "$ADMIN_LOGIN_RESPONSE" | tail -c 4)
+          ADMIN_LOGIN_BODY=$(echo "$ADMIN_LOGIN_RESPONSE" | head -c -4)
+          echo "Admin login response code: $ADMIN_LOGIN_CODE"
+          echo "Admin login response body: $ADMIN_LOGIN_BODY"
+          echo "$ADMIN_LOGIN_BODY" > admin_login.json
+          
+          if [[ "$ADMIN_LOGIN_CODE" != "200" ]]; then
+            echo "Admin login failed with code $ADMIN_LOGIN_CODE"
+            echo "Response: $ADMIN_LOGIN_BODY"
+            exit 1
+          fi
+          
           ADMIN_TOKEN=$(perl -ne 'print $1 if /"token":"([^"]+)"/' admin_login.json)
           if [ -z "$ADMIN_TOKEN" ]; then
             echo "Failed to extract admin token from response"
+            echo "Full response: $ADMIN_LOGIN_BODY"
             exit 1
           fi
-          echo "Admin token extracted successfully"
+          echo "Admin token extracted successfully: ${ADMIN_TOKEN:0:20}..."
 
           # Create stadium
           echo "Creating stadium..."
