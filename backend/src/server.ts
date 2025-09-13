@@ -6,11 +6,22 @@ import mongoose from "mongoose";
 import authRouter from "./routes/auth";
 import stadiumsRouter from "./routes/stadiums";
 import eventsRouter from "./routes/events";
+import ticketsRouter from "./routes/tickets";
+import validationRouter from "./routes/validation";
+// Import models to ensure they're registered with mongoose
+import "./models/User";
+import "./models/Stadium";
+import "./models/Event";
+import "./models/Order";
+import "./models/Ticket";
+import "./models/Session";
+import "./models/PasswordReset";
 import { errorHandler } from "./middlewares/errorHandler";
 import { requestLogger } from "./middlewares/logger";
 import { requestId, securityHeaders, authRateLimit, apiRateLimit } from "./middlewares/security";
 import { connectWithRetry, setupGracefulShutdown } from "./utils/mongo";
 import { ensureAdminUser } from "./utils/bootstrap";
+import { DatabaseMigrations } from "./utils/migrations";
 import { env } from "./config/env";
 
 
@@ -41,6 +52,8 @@ app.get("/hello", (_, res) => {
 app.use("/api/auth", authRateLimit, authRouter);
 app.use("/api/stadiums", apiRateLimit, stadiumsRouter);
 app.use("/api/events", apiRateLimit, eventsRouter);
+app.use("/api/tickets", apiRateLimit, ticketsRouter);
+app.use("/api/validation", apiRateLimit, validationRouter);
 
 // Error handler should be last
 app.use(errorHandler);
@@ -49,9 +62,15 @@ app.use(errorHandler);
 if (env.mongoUri) {
   connectWithRetry(env.mongoUri).then(async () => {
     try {
+      // Run database migrations
+      await DatabaseMigrations.runMigrations();
+      
+      // Ensure admin user exists
       await ensureAdminUser();
+      
+      console.log("🚀 Database setup completed successfully");
     } catch (e) {
-      console.error("❌ Failed to ensure admin user:", e);
+      console.error("❌ Failed to setup database:", e);
     }
   }).catch((err) =>
     console.error("❌ MongoDB connection error:", err)
