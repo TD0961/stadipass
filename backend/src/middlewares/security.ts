@@ -49,7 +49,7 @@ export const securityHeaders = helmet({
 // Rate limiting for auth routes - environment-aware
 export const authRateLimit = rateLimit({
   windowMs: RATE_LIMIT_CONFIG.auth.windowMs,
-  max: RATE_LIMIT_CONFIG.auth.max[env.NODE_ENV as keyof typeof RATE_LIMIT_CONFIG.auth.max] || RATE_LIMIT_CONFIG.auth.max.production,
+  max: RATE_LIMIT_CONFIG.auth.max[env.nodeEnv as keyof typeof RATE_LIMIT_CONFIG.auth.max] || RATE_LIMIT_CONFIG.auth.max.production,
   message: { error: "Too many login attempts, please try again later" },
   standardHeaders: true,
   legacyHeaders: false,
@@ -66,7 +66,7 @@ export const authRateLimit = rateLimit({
     // Skip for localhost/CI environments
     if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || 
         req.get('host')?.includes('localhost') || 
-        env.NODE_ENV === 'test') {
+        env.nodeEnv === 'test') {
       return true;
     }
     
@@ -77,7 +77,7 @@ export const authRateLimit = rateLimit({
 // Rate limiting for general API - environment-aware
 export const apiRateLimit = rateLimit({
   windowMs: RATE_LIMIT_CONFIG.api.windowMs,
-  max: RATE_LIMIT_CONFIG.api.max[env.NODE_ENV as keyof typeof RATE_LIMIT_CONFIG.api.max] || RATE_LIMIT_CONFIG.api.max.production,
+  max: RATE_LIMIT_CONFIG.api.max[env.nodeEnv as keyof typeof RATE_LIMIT_CONFIG.api.max] || RATE_LIMIT_CONFIG.api.max.production,
   message: { error: "Too many requests, please try again later" },
   standardHeaders: true,
   legacyHeaders: false,
