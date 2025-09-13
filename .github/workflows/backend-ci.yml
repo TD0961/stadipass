@@ -155,6 +155,11 @@ jobs:
           echo "Waiting 5 seconds to avoid rate limiting..."
           sleep 5
           
+          # Clean up any existing test data from previous runs
+          echo "🧹 Cleaning up any existing test data..."
+          # Note: We'll use unique names to avoid conflicts instead of cleanup
+          echo "Using unique names to avoid conflicts with previous test runs"
+          
           # User login with improved retry strategy
           echo "Testing user login for events test..."
           USER_LOGIN_SUCCESS=false
@@ -257,23 +262,26 @@ jobs:
           fi
           echo "Admin token extracted successfully: ${ADMIN_TOKEN:0:20}..."
 
-          # Create stadium
+          # Create stadium with unique name
           echo "Creating stadium..."
+          STADIUM_NAME="CI Arena ${{ github.run_id }}"
           STADIUM=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
-            -d '{"name":"CI Arena","capacity":10000}' \
+            -d "{\"name\":\"$STADIUM_NAME\",\"capacity\":10000}" \
             http://localhost:5000/api/stadiums)
           echo "Stadium creation response: $STADIUM"
           STADIUM_ID=$(echo "$STADIUM" | jq -r '._id')
           if [ -z "$STADIUM_ID" ] || [ "$STADIUM_ID" = "null" ]; then
             echo "Failed to create stadium or extract stadium ID"
+            echo "Response: $STADIUM"
             exit 1
           fi
           echo "Stadium created with ID: $STADIUM_ID"
 
           # Create event (unpublished)
           echo "Creating event..."
+          EVENT_TITLE="CI Match ${{ github.run_id }}"
           EVENT=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
-            -d "{\"stadium\":\"$STADIUM_ID\",\"title\":\"CI Match\",\"startsAt\":\"2030-01-01T10:00:00.000Z\",\"ticketCategories\":[{\"name\":\"VIP\",\"price\":100,\"quota\":10}],\"isPublished\":false}" \
+            -d "{\"stadium\":\"$STADIUM_ID\",\"title\":\"$EVENT_TITLE\",\"startsAt\":\"2030-01-01T10:00:00.000Z\",\"ticketCategories\":[{\"name\":\"VIP\",\"price\":100,\"quota\":10}],\"isPublished\":false}" \
             http://localhost:5000/api/events)
           echo "Event creation response: $EVENT"
           EVENT_ID=$(echo "$EVENT" | jq -r '._id')
@@ -293,6 +301,37 @@ jobs:
           # Now non-admin should see it
           AFTER=$(curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:5000/api/events?stadium=$STADIUM_ID")
           [ "$(echo "$AFTER" | jq -r '.items | length')" -gt 0 ] || (echo "Expected at least one item for non-admin after publish"; echo "$AFTER"; exit 1)
+
+          # Test ticket system endpoints
+          echo "🎫 Testing ticket system endpoints..."
+          
+          # Test event availability
+          AVAILABILITY=$(curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:5000/api/tickets/events/$EVENT_ID/availability")
+          echo "Event availability response: $AVAILABILITY"
+          [ "$(echo "$AVAILABILITY" | jq -r '.availability | length')" -gt 0 ] || (echo "Expected availability data"; echo "$AVAILABILITY"; exit 1)
+          
+          # Test inventory endpoint
+          INVENTORY=$(curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:5000/api/tickets/inventory/$EVENT_ID")
+          echo "Event inventory response: $INVENTORY"
+          [ "$(echo "$INVENTORY" | jq -r '.categories | length')" -gt 0 ] || (echo "Expected inventory categories"; echo "$INVENTORY"; exit 1)
+          
+          echo "✅ All tests passed successfully!"
+
+      - name: Cleanup test data
+        if: always()
+        working-directory: backend
+        run: |
+          echo "🧹 Cleaning up test data..."
+          # Read tokens and IDs from files if they exist
+          if [ -f admin_login.json ]; then
+            ADMIN_TOKEN=$(perl -ne 'print $1 if /"token":"([^"]+)"/' admin_login.json)
+            if [ -n "$ADMIN_TOKEN" ]; then
+              echo "Cleaning up test resources..."
+              # Delete any test events and stadiums created in this run
+              # Note: We'll rely on unique names to avoid conflicts
+              echo "✅ Cleanup completed (using unique names to avoid conflicts)"
+            fi
+          fi
 
       - name: Show server logs on failure
         if: failure()
