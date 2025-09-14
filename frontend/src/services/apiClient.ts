@@ -11,6 +11,16 @@ const apiClient: AxiosInstance = axios.create({
   withCredentials: true, // For cookies
 })
 
+// Create a separate client for non-API endpoints (like health)
+const healthClient: AxiosInstance = axios.create({
+  baseURL: 'http://localhost:5000',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true,
+})
+
 // Request interceptor
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -101,4 +111,4 @@ apiClient.interceptors.response.use(
   }
 )
 
-export { apiClient }
+export { apiClient, healthClient }

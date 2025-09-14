@@ -5,6 +5,7 @@ import { AuthProvider } from '@/stores/authStore'
 import { Layout } from '@/components/layout/Layout'
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
 import { AdminRoute } from '@/components/layout/AdminRoute'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 // Pages
 import { HomePage } from '@/pages/HomePage'
@@ -12,6 +13,10 @@ import { EventsPage } from '@/pages/EventsPage'
 import { EventDetailsPage } from '@/pages/EventDetailsPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
+import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
+import { EmailVerificationPage } from '@/pages/EmailVerificationPage'
+import { OAuthCallbackPage } from '@/pages/OAuthCallbackPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { OrdersPage } from '@/pages/OrdersPage'
 import { TicketsPage } from '@/pages/TicketsPage'
@@ -35,11 +40,12 @@ const queryClient = new QueryClient({
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router>
-          <div className="min-h-screen bg-neutral-50">
-            <Routes>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <Router>
+            <div className="min-h-screen bg-neutral-50">
+              <Routes>
               {/* Public Routes */}
               <Route path="/" element={<Layout />}>
                 <Route index element={<HomePage />} />
@@ -47,6 +53,10 @@ function App() {
                 <Route path="events/:id" element={<EventDetailsPage />} />
                 <Route path="login" element={<LoginPage />} />
                 <Route path="register" element={<RegisterPage />} />
+                <Route path="forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="reset-password" element={<ResetPasswordPage />} />
+                <Route path="verify-email" element={<EmailVerificationPage />} />
+                <Route path="auth/callback" element={<OAuthCallbackPage />} />
               </Route>
 
               {/* Protected Routes */}
@@ -126,9 +136,10 @@ function App() {
               },
             }}
           />
-        </Router>
-      </AuthProvider>
-    </QueryClientProvider>
+          </Router>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   )
 }
 

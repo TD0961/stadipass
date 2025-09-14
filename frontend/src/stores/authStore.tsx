@@ -13,6 +13,8 @@ interface AuthState {
   logout: () => void
   refreshToken: () => Promise<void>
   updateProfile: (userData: Partial<User>) => Promise<void>
+  setUser: (user: AuthUser) => void
+  setToken: (token: string) => void
   clearError: () => void
   error: string | null
 }
@@ -126,6 +128,17 @@ export const useAuthStore = create<AuthState>()(
           })
           toast.error(errorMessage)
           throw error
+        }
+      },
+
+      setUser: (user: AuthUser) => {
+        set({ user, isAuthenticated: true, error: null })
+      },
+
+      setToken: (token: string) => {
+        const currentUser = get().user
+        if (currentUser) {
+          set({ user: { ...currentUser, token }, isAuthenticated: true })
         }
       },
 

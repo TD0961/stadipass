@@ -12,7 +12,13 @@
     "type-check": "tsc --noEmit",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "test:watch": "vitest --watch",
+    "audit": "npm audit --audit-level moderate",
+    "audit:fix": "npm audit fix",
+    "docker:build": "docker build -t stadipass-frontend .",
+    "docker:run": "docker run -p 3000:80 stadipass-frontend",
+    "analyze": "npx vite-bundle-analyzer dist/stats.html"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",
