@@ -114,13 +114,15 @@ function App() {
           
           {/* Toast Notifications */}
           <Toaster
-            position="top-right"
+            position="top-center"
             toastOptions={{
-              duration: 4000,
+              duration: 5000,
               style: {
                 background: '#fff',
                 color: '#374151',
                 boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb',
               },
               success: {
                 iconTheme: {

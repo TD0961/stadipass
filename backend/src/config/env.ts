@@ -26,6 +26,10 @@ export const env = {
   smtpPort: process.env.SMTP_PORT,
   smtpUser: process.env.SMTP_USER,
   smtpPass: process.env.SMTP_PASS,
+  googleClientId: process.env.GOOGLE_CLIENT_ID,
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  githubClientId: process.env.GITHUB_CLIENT_ID,
+  githubClientSecret: process.env.GITHUB_CLIENT_SECRET,
 } as const;
 
 

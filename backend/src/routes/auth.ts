@@ -248,10 +248,10 @@ router.post("/request-reset", async (req, res) => {
 // Public: reset password
 router.post("/reset-password", async (req, res) => {
   try {
-    const { email, token, newPassword } = z.object({
+    const { email, token, password } = z.object({
       email: z.string().email(),
       token: z.string().min(1),
-      newPassword: z.string().min(6)
+      password: z.string().min(6)
     }).parse(req.body);
 
     // Find valid reset token
@@ -280,7 +280,7 @@ router.post("/reset-password", async (req, res) => {
     }
 
     // Update password
-    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const passwordHash = await bcrypt.hash(password, 10);
     await User.findByIdAndUpdate(user._id, { passwordHash });
 
     // Mark token as used
@@ -391,6 +391,51 @@ router.get("/verify-email", async (req, res) => {
   }
 });
 
+// Protected: resend verification email
+router.post("/resend-verification", requireAuth, async (req, res) => {
+  try {
+    const auth = (req as any).auth as { sub?: string; email?: string } | undefined;
+    if (!auth?.sub) return res.status(401).json({ error: "Unauthenticated" });
+    
+    const user = await User.findById(auth.sub);
+    if (!user) return res.status(404).json({ error: "User not found" });
+    
+    if (user.emailVerifiedAt) {
+      return res.status(400).json({ error: "Email already verified" });
+    }
+
+    // Generate new verification token
+    const verifyToken = crypto.randomBytes(32).toString('hex');
+    const verifyUrl = `${env.appBaseUrl}/api/auth/verify-email?token=${verifyToken}&email=${encodeURIComponent(user.email)}`;
+    
+    // Store verification token
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours
+    
+    await PasswordReset.create({
+      userId: user._id,
+      tokenHash: await bcrypt.hash(verifyToken, 10),
+      expiresAt,
+      ip: req.ip,
+      userAgent: req.get('user-agent')
+    });
+
+    // Log verification URL in non-production for testing
+    if (env.nodeEnv !== "production") {
+      console.log("📧 Resend verification URL:", verifyUrl);
+    }
+
+    // Send verification email
+    const emailTemplate = getEmailVerificationTemplate(verifyUrl, user.firstName);
+    emailTemplate.to = user.email;
+    await sendEmail(emailTemplate);
+
+    return res.json({ message: "Verification email sent" });
+  } catch (err: any) {
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Protected: get current user from token
 router.get("/me", requireAuth, async (req, res) => {
   const auth = (req as any).auth as { sub?: string; email?: string } | undefined;
@@ -406,6 +451,141 @@ router.get("/me", requireAuth, async (req, res) => {
     role: user.role,
     emailVerified: !!user.emailVerifiedAt
   });
+});
+
+// OAuth callback endpoint
+router.post("/oauth/callback", async (req, res) => {
+  try {
+    const { code, state } = z.object({
+      code: z.string(),
+      state: z.string()
+    }).parse(req.body);
+
+    let userInfo: any = null;
+
+    if (state === 'google') {
+      // Handle Google OAuth
+      const { google } = await import('googleapis');
+      const oauth2Client = new google.auth.OAuth2(
+        env.googleClientId,
+        env.googleClientSecret,
+        `${env.appBaseUrl}/auth/callback`
+      );
+
+      const { tokens } = await oauth2Client.getToken(code);
+      oauth2Client.setCredentials(tokens);
+
+      const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+      const { data } = await oauth2.userinfo.get();
+      
+      userInfo = {
+        email: data.email,
+        firstName: data.given_name,
+        lastName: data.family_name,
+        provider: 'google',
+        providerId: data.id
+      };
+    } else if (state === 'github') {
+      // Handle GitHub OAuth
+      const axios = (await import('axios')).default;
+      const tokenResponse = await axios.post('https://github.com/login/oauth/access_token', {
+        client_id: env.githubClientId,
+        client_secret: env.githubClientSecret,
+        code
+      }, {
+        headers: { Accept: 'application/json' }
+      });
+
+      const accessToken = tokenResponse.data.access_token;
+      const userResponse = await axios.get('https://api.github.com/user', {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+
+      const emailResponse = await axios.get('https://api.github.com/user/emails', {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+
+      const primaryEmail = emailResponse.data.find((email: any) => email.primary)?.email || userResponse.data.email;
+
+      userInfo = {
+        email: primaryEmail,
+        firstName: userResponse.data.name?.split(' ')[0] || userResponse.data.login,
+        lastName: userResponse.data.name?.split(' ').slice(1).join(' ') || '',
+        provider: 'github',
+        providerId: userResponse.data.id.toString()
+      };
+    } else {
+      return res.status(400).json({ error: 'Invalid OAuth provider' });
+    }
+
+    if (!userInfo.email) {
+      return res.status(400).json({ error: 'Could not retrieve email from OAuth provider' });
+    }
+
+    // Find or create user
+    let user = await User.findOne({ email: userInfo.email });
+    
+    if (!user) {
+      // Create new user
+      user = await User.create({
+        email: userInfo.email,
+        firstName: userInfo.firstName,
+        lastName: userInfo.lastName,
+        emailVerifiedAt: new Date(), // OAuth users are pre-verified
+        oauthProvider: userInfo.provider,
+        oauthProviderId: userInfo.providerId
+      });
+    } else {
+      // Update existing user with OAuth info if not already set
+      if (!user.oauthProvider) {
+        user.oauthProvider = userInfo.provider;
+        user.oauthProviderId = userInfo.providerId;
+        await user.save();
+      }
+    }
+
+    // Generate refresh token and token id
+    const refreshToken = crypto.randomBytes(32).toString('hex');
+    const tokenId = crypto.randomUUID();
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+    
+    // Create session
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30); // 30 days
+    
+    await Session.create({
+      userId: user._id,
+      tokenId,
+      refreshTokenHash,
+      userAgent: req.get('user-agent'),
+      ip: req.ip,
+      expiresAt
+    });
+
+    // Generate access token
+    const accessToken = jwt.sign(
+      { sub: (user._id as any).toString(), email: user.email, role: user.role },
+      env.jwtSecret,
+      { expiresIn: "15m" }
+    );
+
+    // Set refresh token cookie
+    setRefreshTokenCookie(res, refreshToken, tokenId);
+
+    return res.json({ 
+      token: accessToken,
+      id: user._id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      emailVerified: !!user.emailVerifiedAt
+    });
+
+  } catch (err: any) {
+    console.error('OAuth callback error:', err);
+    return res.status(500).json({ error: 'OAuth authentication failed' });
+  }
 });
 
 export default router;

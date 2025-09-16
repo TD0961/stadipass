@@ -44,10 +44,11 @@ class AuthService {
     return { data: response.data, message: response.data.message }
   }
 
-  async resetPassword(token: string, newPassword: string): Promise<ApiResponse<void>> {
+  async resetPassword(token: string, email: string, password: string): Promise<ApiResponse<void>> {
     const response = await apiClient.post('/auth/reset-password', {
       token,
-      password: newPassword,
+      email,
+      password,
     })
     return { data: response.data, message: response.data.message }
   }

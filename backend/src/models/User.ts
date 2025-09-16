@@ -16,6 +16,8 @@ export interface IUser extends Document {
   isActive: boolean;
   emailVerifiedAt?: Date;
   lastLoginAt?: Date;
+  oauthProvider?: string;
+  oauthProviderId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,7 +32,7 @@ const UserSchema = new Schema<IUser>(
       lowercase: true,
       trim: true
     },
-    passwordHash: { type: String, required: true },
+    passwordHash: { type: String, required: function() { return !this.oauthProvider; } },
     firstName: { 
       type: String, 
       required: true, 
@@ -58,7 +60,9 @@ const UserSchema = new Schema<IUser>(
       default: true 
     },
     emailVerifiedAt: { type: Date },
-    lastLoginAt: { type: Date }
+    lastLoginAt: { type: Date },
+    oauthProvider: { type: String, enum: ['google', 'github'] },
+    oauthProviderId: { type: String }
   },
   { 
     timestamps: true,

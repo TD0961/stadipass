@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toast Test - StadiPass</title>
+    <script src="https://unpkg.com/react-hot-toast@2.4.1/dist/index.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 10px;
+            background: #007cba;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .button:hover {
+            background: #005a87;
+        }
+        .button.success {
+            background: #10B981;
+        }
+        .button.error {
+            background: #EF4444;
+        }
+        .button.warning {
+            background: #F59E0B;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            background: #e6f3ff;
+            border-left: 4px solid #007cba;
+            border-radius: 4px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍞 Toast Notification Test</h1>
+        
+        <div class="status">
+            <strong>Test Status:</strong> Testing toast positioning and duration...
+        </div>
+
+        <div class="test-section">
+            <h3>🎯 Toast Position Test</h3>
+            <p>Toasts should appear in the <strong>top-center</strong> position with <strong>5-second</strong> duration.</p>
+            
+            <button class="button success" onclick="showSuccessToast()">
+                ✅ Success Toast
+            </button>
+            
+            <button class="button error" onclick="showErrorToast()">
+                ❌ Error Toast
+            </button>
+            
+            <button class="button warning" onclick="showWarningToast()">
+                ⚠️ Warning Toast
+            </button>
+            
+            <button class="button" onclick="showInfoToast()">
+                ℹ️ Info Toast
+            </button>
+        </div>
+
+        <div class="test-section">
+            <h3>⏱️ Duration Test</h3>
+            <p>Click the button below to test the 5-second duration:</p>
+            
+            <button class="button" onclick="showDurationTest()">
+                ⏰ Test 5-Second Duration
+            </button>
+        </div>
+
+        <div class="test-section">
+            <h3>🎨 Style Test</h3>
+            <p>Test the toast styling and appearance:</p>
+            
+            <button class="button" onclick="showStyledToast()">
+                🎨 Styled Toast
+            </button>
+        </div>
+
+        <div class="test-section">
+            <h3>📱 Multiple Toasts Test</h3>
+            <p>Test multiple toasts appearing simultaneously:</p>
+            
+            <button class="button" onclick="showMultipleToasts()">
+                📱 Multiple Toasts
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize react-hot-toast
+        const { Toaster, toast } = window.reactHotToast;
+
+        // Create toaster element
+        const toaster = document.createElement('div');
+        toaster.id = 'toaster';
+        document.body.appendChild(toaster);
+
+        // Render the toaster
+        ReactDOM.render(React.createElement(Toaster, {
+            position: "top-center",
+            toastOptions: {
+                duration: 5000,
+                style: {
+                    background: '#fff',
+                    color: '#374151',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb',
+                },
+                success: {
+                    iconTheme: {
+                        primary: '#10B981',
+                        secondary: '#fff',
+                    },
+                },
+                error: {
+                    iconTheme: {
+                        primary: '#EF4444',
+                        secondary: '#fff',
+                    },
+                },
+            }
+        }), toaster);
+
+        function showSuccessToast() {
+            toast.success('✅ Success! This is a success message that should appear in top-center for 5 seconds.');
+        }
+
+        function showErrorToast() {
+            toast.error('❌ Error! This is an error message that should appear in top-center for 5 seconds.');
+        }
+
+        function showWarningToast() {
+            toast('⚠️ Warning! This is a warning message that should appear in top-center for 5 seconds.', {
+                icon: '⚠️',
+                style: {
+                    background: '#FEF3C7',
+                    color: '#92400E',
+                    border: '1px solid #F59E0B',
+                }
+            });
+        }
+
+        function showInfoToast() {
+            toast('ℹ️ Info! This is an info message that should appear in top-center for 5 seconds.', {
+                icon: 'ℹ️',
+                style: {
+                    background: '#DBEAFE',
+                    color: '#1E40AF',
+                    border: '1px solid #3B82F6',
+                }
+            });
+        }
+
+        function showDurationTest() {
+            toast('⏰ This toast should disappear after exactly 5 seconds. Watch the timer!', {
+                duration: 5000,
+                icon: '⏰'
+            });
+        }
+
+        function showStyledToast() {
+            toast('🎨 This toast has custom styling with rounded corners and border!', {
+                style: {
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    borderRadius: '12px',
+                    border: '2px solid #4F46E5',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                },
+                icon: '🎨'
+            });
+        }
+
+        function showMultipleToasts() {
+            toast.success('First toast - Success!');
+            setTimeout(() => toast.error('Second toast - Error!'), 500);
+            setTimeout(() => toast('Third toast - Info!', { icon: 'ℹ️' }), 1000);
+            setTimeout(() => toast.success('Fourth toast - Another Success!'), 1500);
+        }
+
+        // Auto-test on page load
+        window.onload = function() {
+            setTimeout(() => {
+                toast.success('🎉 Toast system loaded! Position: top-center, Duration: 5 seconds');
+            }, 1000);
+        };
+    </script>
+
+    <!-- Load React and ReactDOM for react-hot-toast -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+</body>
+</html>

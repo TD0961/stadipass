@@ -47,7 +47,7 @@ export const ResetPasswordPage = () => {
       }
       
       try {
-        await authService.resetPassword(token, formData.password)
+        await authService.resetPassword(token, email!, formData.password)
         toast.success('Password updated successfully')
         setIsSubmitted(true)
       } catch (error: any) {

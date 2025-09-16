@@ -15,7 +15,8 @@ class OAuthService {
    */
   initiateGoogleAuth(): void {
     if (!GOOGLE_CLIENT_ID) {
-      throw new Error('Google OAuth not configured')
+      console.warn('Google OAuth not configured')
+      return
     }
     
     // Store the current URL to redirect back after auth
@@ -28,7 +29,8 @@ class OAuthService {
    */
   initiateGitHubAuth(): void {
     if (!GITHUB_CLIENT_ID) {
-      throw new Error('GitHub OAuth not configured')
+      console.warn('GitHub OAuth not configured')
+      return
     }
     
     // Store the current URL to redirect back after auth
@@ -40,7 +42,7 @@ class OAuthService {
    * Handle OAuth callback
    */
   async handleCallback(code: string, state: string): Promise<ApiResponse<AuthUser>> {
-    const response = await fetch('/api/auth/oauth/callback', {
+    const response = await fetch(`${(import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api'}/auth/oauth/callback`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
