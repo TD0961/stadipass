@@ -52,29 +52,26 @@ const OrderSchema = new Schema<IOrder>({
     type: String, 
     required: true, 
     unique: true, 
-    index: true,
     uppercase: true,
     match: /^ORD-\d{4}-\d{6}$/  // ORD-2024-000001 format
   },
-  user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
-  event: { type: Schema.Types.ObjectId, ref: "Event", required: true, index: true },
+  user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  event: { type: Schema.Types.ObjectId, ref: "Event", required: true },
   items: { type: [OrderItemSchema], required: true, validate: [arrayLimit, 'Order must have at least one item'] },
   totalAmount: { type: Number, required: true, min: 0 },
   status: { 
     type: String, 
     enum: Object.values(OrderStatus), 
-    default: OrderStatus.PENDING,
-    index: true
+    default: OrderStatus.PENDING
   },
   paymentStatus: { 
     type: String, 
     enum: Object.values(PaymentStatus), 
-    default: PaymentStatus.PENDING,
-    index: true
+    default: PaymentStatus.PENDING
   },
   paymentId: { type: String, trim: true },
   paymentMethod: { type: String, trim: true },
-  expiresAt: { type: Date, required: true, index: true },
+  expiresAt: { type: Date, required: true },
   paidAt: { type: Date },
   cancelledAt: { type: Date }
 }, { 
@@ -97,7 +94,6 @@ function arrayLimit(val: any[]) {
 // Indexes for efficient queries
 OrderSchema.index({ user: 1, createdAt: -1 });
 OrderSchema.index({ event: 1, status: 1 });
-OrderSchema.index({ orderNumber: 1 });
 OrderSchema.index({ status: 1, paymentStatus: 1 });
 OrderSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index for expired orders
 

@@ -36,23 +36,21 @@ const TicketSchema = new Schema<ITicket>({
     type: String, 
     required: true, 
     unique: true, 
-    index: true,
     uppercase: true,
     match: /^TKT-\d{4}-\d{8}$/  // TKT-2024-00000001 format
   },
-  order: { type: Schema.Types.ObjectId, ref: "Order", required: true, index: true },
-  user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
-  event: { type: Schema.Types.ObjectId, ref: "Event", required: true, index: true },
-  ticketCategory: { type: String, required: true, trim: true, index: true },
+  order: { type: Schema.Types.ObjectId, ref: "Order", required: true },
+  user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  event: { type: Schema.Types.ObjectId, ref: "Event", required: true },
+  ticketCategory: { type: String, required: true, trim: true },
   price: { type: Number, required: true, min: 0 },
   status: { 
     type: String, 
     enum: Object.values(TicketStatus), 
-    default: TicketStatus.ACTIVE,
-    index: true
+    default: TicketStatus.ACTIVE
   },
-  qrCode: { type: String, required: true, unique: true, index: true },
-  qrCodeHash: { type: String, required: true, unique: true, index: true },
+  qrCode: { type: String, required: true, unique: true },
+  qrCodeHash: { type: String, required: true, unique: true },
   usedAt: { type: Date },
   usedBy: { type: Schema.Types.ObjectId, ref: "User" },
   entryLocation: { type: String, trim: true },
@@ -74,9 +72,6 @@ const TicketSchema = new Schema<ITicket>({
 TicketSchema.index({ order: 1 });
 TicketSchema.index({ user: 1, event: 1 });
 TicketSchema.index({ event: 1, status: 1 });
-TicketSchema.index({ qrCode: 1 });
-TicketSchema.index({ qrCodeHash: 1 });
-TicketSchema.index({ ticketNumber: 1 });
 TicketSchema.index({ status: 1, event: 1 });
 
 // Pre-save middleware to generate ticket number and QR code

@@ -69,35 +69,13 @@ apiClient.interceptors.response.use(
           break
           
         case 403:
-          toast.error('Access denied. You do not have permission to perform this action.')
-          break
-          
         case 404:
-          toast.error('Resource not found.')
-          break
-          
         case 422:
-          // Validation errors
-          if (data?.details) {
-            const errors = Object.values(data.details).flat()
-            errors.forEach((error: any) => {
-              toast.error(error.message || error)
-            })
-          } else {
-            toast.error(data?.error || 'Validation failed')
-          }
-          break
-          
         case 429:
-          toast.error('Too many requests. Please try again later.')
-          break
-          
         case 500:
-          toast.error('Server error. Please try again later.')
-          break
-          
         default:
-          toast.error(data?.error || 'An unexpected error occurred')
+          // Let individual components handle error display
+          break
       }
     } else if (error.request) {
       // Network error

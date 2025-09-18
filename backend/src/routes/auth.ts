@@ -453,6 +453,50 @@ router.get("/me", requireAuth, async (req, res) => {
   });
 });
 
+// Dev-only: fetch user by email to verify persistence
+if (env.nodeEnv !== "production") {
+  router.get("/debug/user", async (req, res) => {
+    try {
+      const { email } = z.object({ email: z.string().email() }).parse({ email: req.query.email });
+      const user = await User.findOne({ email }).select("_id email firstName lastName role emailVerifiedAt createdAt").lean();
+      if (!user) return res.status(404).json({ error: "Not found" });
+      return res.json(user);
+    } catch (err: any) {
+      return res.status(400).json({ error: "Invalid input" });
+    }
+  });
+
+  // Dev-only: manually verify user for testing
+  router.post("/debug/verify-user", async (req, res) => {
+    try {
+      const { email } = z.object({ email: z.string().email() }).parse(req.body);
+      const user = await User.findOneAndUpdate(
+        { email },
+        { emailVerifiedAt: new Date() },
+        { new: true }
+      ).select("_id email firstName lastName role emailVerifiedAt createdAt").lean();
+      
+      if (!user) return res.status(404).json({ error: "User not found" });
+      return res.json({ message: "User verified successfully", user });
+    } catch (err: any) {
+      return res.status(400).json({ error: "Invalid input" });
+    }
+  });
+
+  // Dev-only: clear all users from database
+  router.post("/debug/clear-users", async (req, res) => {
+    try {
+      const result = await User.deleteMany({});
+      return res.json({ 
+        message: "All users cleared successfully", 
+        deletedCount: result.deletedCount 
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: "Failed to clear users" });
+    }
+  });
+}
+
 // OAuth callback endpoint
 router.post("/oauth/callback", async (req, res) => {
   try {
@@ -469,7 +513,8 @@ router.post("/oauth/callback", async (req, res) => {
       const oauth2Client = new google.auth.OAuth2(
         env.googleClientId,
         env.googleClientSecret,
-        `${env.appBaseUrl}/auth/callback`
+        // Redirect back to frontend's callback route to mirror production
+        `${env.frontendBaseUrl}/auth/callback`
       );
 
       const { tokens } = await oauth2Client.getToken(code);

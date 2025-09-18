@@ -16,6 +16,7 @@ import { RegisterPage } from '@/pages/RegisterPage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 import { EmailVerificationPage } from '@/pages/EmailVerificationPage'
+import { EmailVerificationCodePage } from '@/pages/EmailVerificationCodePage'
 import { OAuthCallbackPage } from '@/pages/OAuthCallbackPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { OrdersPage } from '@/pages/OrdersPage'
@@ -56,6 +57,7 @@ function App() {
                 <Route path="forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="reset-password" element={<ResetPasswordPage />} />
                 <Route path="verify-email" element={<EmailVerificationPage />} />
+                <Route path="verify-code" element={<EmailVerificationCodePage />} />
                 <Route path="auth/callback" element={<OAuthCallbackPage />} />
               </Route>
 
