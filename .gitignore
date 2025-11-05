@@ -3,16 +3,35 @@ node_modules/
 dist/
 *.log
 *.tgz
+*.pid
 
 # Env files
 .env
 .env.*
-ENV_SAMPLE
+*.env.local
+*.env.*.local
+
+# Test/Cookie files
+*cookies.txt
+*login.json
+*_cookies.txt
+*_login.json
+
+# Build outputs
+backend/dist/
+frontend/dist/
 
 # Editor/OS
 .DS_Store
 .idea/
 .vscode/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
 
 # Docker
 **/.dockerignore

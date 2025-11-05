@@ -4,13 +4,21 @@ A modern, scalable stadium ticketing system built with Node.js, TypeScript, Mong
 
 ## 🏗️ Architecture
 
-- **Backend**: Node.js + Express + TypeScript
+- **Backend**: Node.js + Express + TypeScript ✅ **Production Ready**
+- **Frontend**: React + Vite (to be built) 🚧 **In Development**
 - **Database**: MongoDB with Mongoose ODM
 - **Authentication**: JWT + Refresh Tokens + Session Management
 - **Security**: Helmet, Rate Limiting, CORS, Input Validation
 - **Containerization**: Multi-stage Docker builds
-- **CI/CD**: GitHub Actions with Docker Hub integration
+- **CI/CD**: GitHub Actions (to be configured) 🚧 **Pending**
 - **Infrastructure**: Docker Compose, Kubernetes ready
+
+## 📊 Project Status
+
+**Backend**: ✅ **85-90% Complete** - Production-ready with comprehensive API  
+**Frontend**: 🚧 **Starting Fresh** - Building modern frontend from scratch
+
+📖 **See [PROJECT_ASSESSMENT_AND_ROADMAP.md](./PROJECT_ASSESSMENT_AND_ROADMAP.md) for detailed assessment and roadmap**
 
 ## 🚀 Quick Start
 
@@ -327,19 +335,20 @@ stadipass/
 │   │   ├── config/          # Environment configuration
 │   │   ├── controllers/     # Route controllers
 │   │   ├── middlewares/     # Auth, security, error handling
-│   │   ├── models/          # MongoDB schemas
-│   │   ├── routes/          # API route definitions
-│   │   ├── utils/           # Utilities (cookies, bootstrap)
+│   │   ├── models/          # MongoDB schemas (7 models)
+│   │   ├── routes/          # API route definitions (5 routers)
+│   │   ├── services/        # Business logic services (4 services)
+│   │   ├── utils/           # Utilities (6 utilities)
 │   │   └── server.ts        # Main application entry
 │   ├── Dockerfile           # Multi-stage container build
 │   ├── package.json
 │   └── ENV_SAMPLE          # Environment template
-├── frontend/                # React frontend (coming soon)
+├── frontend/                # React frontend (to be built)
 ├── infra/
 │   ├── docker-compose.yml   # Local development
 │   ├── k8s/                 # Kubernetes manifests
 │   └── terraform/           # Infrastructure as code
-├── .github/workflows/       # CI/CD pipelines
+├── PROJECT_ASSESSMENT_AND_ROADMAP.md  # Detailed project assessment
 └── README.md
 ```
 
@@ -347,13 +356,12 @@ stadipass/
 
 ### Docker Hub
 
-The CI pipeline automatically builds and pushes images on `main` branch:
+> **Note**: CI/CD workflows will be configured later. For now, you can build and push images manually:
 
 ```bash
-# Images are available at:
-tensae61/stadipass-backend:latest
-tensae61/stadipass-backend:ci-<run-number>
-tensae61/stadipass-backend:<commit-sha>
+# Build and push manually
+docker build -t tensae61/stadipass-backend:latest -f backend/Dockerfile backend
+docker push tensae61/stadipass-backend:latest
 ```
 
 ### Environment Variables
@@ -409,7 +417,9 @@ curl http://localhost:5000/health
 
 ## 🔄 CI/CD Pipeline
 
-The GitHub Actions workflow:
+> **Note**: CI/CD workflows will be configured in a later phase.
+
+The planned GitHub Actions workflow will include:
 
 1. **Build**: Compiles TypeScript and creates Docker image
 2. **Test**: Runs health checks in container
