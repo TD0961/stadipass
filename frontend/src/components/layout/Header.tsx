@@ -228,23 +228,23 @@ export default function Header() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-[#0a0f1e] border-l border-[#00f5a0]/20 shadow-2xl z-[70] md:hidden overflow-y-auto"
+              className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-[#0a0f1e] border-l border-[#00f5a0]/20 shadow-2xl z-[70] md:hidden flex flex-col"
             >
-              <div className="p-6 pt-20">
+              <div className="flex-1 flex flex-col p-4 pt-16 overflow-y-auto">
                 {/* Mobile Menu Header */}
-                <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-xl font-bold text-[#00f5a0]">Menu</h2>
+                <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                  <h2 className="text-lg font-bold text-[#00f5a0]">Menu</h2>
                   <button
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="p-2 text-white hover:text-[#00f5a0] transition-colors"
                     aria-label="Close menu"
                   >
-                    <X className="w-6 h-6" />
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 
                 {/* Mobile Navigation Links */}
-                <nav className="space-y-4 mb-8">
+                <nav className="space-y-2 mb-4 flex-shrink-0">
                   {navigationItems.map((item) => (
                     <div key={`mobile-${item.to}-${item.anchor || 'nav'}`}>
                       {item.anchor ? (
@@ -254,7 +254,7 @@ export default function Header() {
                             e.preventDefault();
                             handleNavClick(item);
                           }}
-                          className="block py-3 text-white hover:text-[#00f5a0] transition-colors border-b border-gray-700/50"
+                          className="block py-2.5 text-white hover:text-[#00f5a0] transition-colors border-b border-gray-700/50 text-sm"
                         >
                           {item.label}
                         </a>
@@ -262,7 +262,7 @@ export default function Header() {
                         <Link
                           to={item.to}
                           onClick={() => handleNavClick(item)}
-                          className="block py-3 text-white hover:text-[#00f5a0] transition-colors border-b border-gray-700/50"
+                          className="block py-2.5 text-white hover:text-[#00f5a0] transition-colors border-b border-gray-700/50 text-sm"
                         >
                           {item.label}
                         </Link>
@@ -272,16 +272,16 @@ export default function Header() {
                 </nav>
 
                 {/* Mobile Auth Section */}
-                <div className="space-y-4 pt-4 border-t border-gray-700/50">
+                <div className="space-y-2.5 pt-3 border-t border-gray-700/50 flex-shrink-0 mt-auto">
                   {isAuthenticated ? (
                     <>
-                      <div className="mb-4">
-                        <p className="text-gray-400 text-sm mb-1">Logged in as</p>
-                        <p className="text-white font-semibold">
+                      <div className="mb-3">
+                        <p className="text-gray-400 text-xs mb-1">Logged in as</p>
+                        <p className="text-white font-semibold text-sm">
                           {user?.firstName} {user?.lastName}
                         </p>
                         {user?.role === 'admin' && (
-                          <span className="inline-block mt-1 px-2 py-1 bg-[#00f5a0]/20 text-[#00f5a0] text-xs rounded">
+                          <span className="inline-block mt-1 px-2 py-0.5 bg-[#00f5a0]/20 text-[#00f5a0] text-xs rounded">
                             Admin
                           </span>
                         )}
@@ -289,7 +289,7 @@ export default function Header() {
                       <Link
                         to="/dashboard"
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className="block w-full py-3 text-center text-white hover:text-[#00f5a0] transition-colors border border-[#00f5a0]/30 rounded-lg"
+                        className="block w-full py-2 text-center text-white hover:text-[#00f5a0] transition-colors border border-[#00f5a0]/30 rounded-lg text-sm"
                       >
                         Dashboard
                       </Link>
@@ -297,7 +297,7 @@ export default function Header() {
                         <Link
                           to="/admin"
                           onClick={() => setIsMobileMenuOpen(false)}
-                          className="block w-full py-3 text-center text-white hover:text-[#00f5a0] transition-colors border border-[#00f5a0]/30 rounded-lg"
+                          className="block w-full py-2 text-center text-white hover:text-[#00f5a0] transition-colors border border-[#00f5a0]/30 rounded-lg text-sm"
                         >
                           Admin Panel
                         </Link>
@@ -308,7 +308,7 @@ export default function Header() {
                           setIsMobileMenuOpen(false);
                         }}
                         variant="outline"
-                        className="w-full"
+                        className="w-full py-2 text-sm"
                       >
                         Logout
                       </Button>
@@ -320,7 +320,7 @@ export default function Header() {
                         onClick={() => setIsMobileMenuOpen(false)}
                         className="block w-full"
                       >
-                        <Button variant="outline" className="w-full">
+                        <Button variant="outline" className="w-full py-2 text-sm">
                           Login
                         </Button>
                       </Link>
@@ -329,7 +329,7 @@ export default function Header() {
                         onClick={() => setIsMobileMenuOpen(false)}
                         className="block w-full"
                       >
-                        <Button className="w-full">
+                        <Button className="w-full py-2 text-sm">
                           Sign Up
                         </Button>
                       </Link>
