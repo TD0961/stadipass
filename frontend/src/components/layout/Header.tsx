@@ -54,7 +54,7 @@ export default function Header() {
       whileInView={{ y: 0, opacity: 1 }}
       viewport={{ once: false, amount: 0.1 }}
       transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-      className="flex justify-center items-center px-4 md:px-10 py-6 sticky top-0 bg-[#030712]/80 backdrop-blur-md z-50 shadow-md"
+      className="flex justify-center items-center px-4 md:px-10 py-6 sticky top-0 bg-[#030712]/80 backdrop-blur-md z-50 shadow-md relative"
     >
       <div className="container mx-auto flex justify-between items-center max-w-7xl">
       <motion.div
@@ -218,7 +218,7 @@ export default function Header() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsMobileMenuOpen(false)}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] md:hidden"
             />
             
             {/* Mobile Menu Panel */}
@@ -227,9 +227,9 @@ export default function Header() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-[#0a0f1e] border-l border-[#00f5a0]/20 shadow-2xl z-50 md:hidden overflow-y-auto"
+              className="fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-[#0a0f1e] border-l border-[#00f5a0]/20 shadow-2xl z-[70] md:hidden overflow-y-auto"
             >
-              <div className="p-6">
+              <div className="p-6 pt-20">
                 {/* Mobile Menu Header */}
                 <div className="flex items-center justify-between mb-8">
                   <h2 className="text-xl font-bold text-[#00f5a0]">Menu</h2>
