@@ -530,35 +530,6 @@ router.post("/oauth/callback", async (req, res) => {
         provider: 'google',
         providerId: data.id
       };
-    } else if (state === 'github') {
-      // Handle GitHub OAuth
-      const axios = (await import('axios')).default;
-      const tokenResponse = await axios.post('https://github.com/login/oauth/access_token', {
-        client_id: env.githubClientId,
-        client_secret: env.githubClientSecret,
-        code
-      }, {
-        headers: { Accept: 'application/json' }
-      });
-
-      const accessToken = tokenResponse.data.access_token;
-      const userResponse = await axios.get('https://api.github.com/user', {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-
-      const emailResponse = await axios.get('https://api.github.com/user/emails', {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-
-      const primaryEmail = emailResponse.data.find((email: any) => email.primary)?.email || userResponse.data.email;
-
-      userInfo = {
-        email: primaryEmail,
-        firstName: userResponse.data.name?.split(' ')[0] || userResponse.data.login,
-        lastName: userResponse.data.name?.split(' ').slice(1).join(' ') || '',
-        provider: 'github',
-        providerId: userResponse.data.id.toString()
-      };
     } else {
       return res.status(400).json({ error: 'Invalid OAuth provider' });
     }

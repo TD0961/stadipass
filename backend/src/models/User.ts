@@ -60,7 +60,7 @@ const UserSchema = new Schema<IUser>(
     },
     emailVerifiedAt: { type: Date },
     lastLoginAt: { type: Date },
-    oauthProvider: { type: String, enum: ['google', 'github'] },
+    oauthProvider: { type: String, enum: ['google'] },
     oauthProviderId: { type: String }
   },
   { 

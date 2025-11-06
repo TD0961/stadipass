@@ -7,10 +7,18 @@ import TicketCategoriesSection from '../components/sections/TicketCategoriesSect
 export default function HomePage() {
   return (
     <Layout>
-      <HeroSection />
-      <EventsSection />
-      <WhyChooseUsSection />
-      <TicketCategoriesSection />
+      <div id="home">
+        <HeroSection />
+      </div>
+      <div id="events">
+        <EventsSection />
+      </div>
+      <div id="about">
+        <WhyChooseUsSection />
+      </div>
+      <div id="pricing">
+        <TicketCategoriesSection />
+      </div>
     </Layout>
   );
 }

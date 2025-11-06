@@ -43,11 +43,14 @@ export default function HeroSection() {
                 Browse Events
               </Button>
             </Link>
-            <Link to="/about">
+            <a href="#about" onClick={(e) => {
+              e.preventDefault();
+              document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' });
+            }}>
               <Button variant="outline" className="px-6 py-3 rounded-full">
                 Learn More
               </Button>
-            </Link>
+            </a>
           </div>
           <motion.div
             initial={{ opacity: 0, y: 20 }}
