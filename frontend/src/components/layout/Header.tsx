@@ -56,22 +56,23 @@ export default function Header() {
       transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
       className="flex justify-center items-center px-4 md:px-10 py-6 sticky top-0 bg-[#030712]/80 backdrop-blur-md z-50 shadow-md relative"
     >
-      <div className="container mx-auto flex justify-between items-center max-w-7xl">
+      <div className="container mx-auto flex justify-between items-center max-w-7xl w-full">
       <motion.div
         initial={{ opacity: 0, x: -20 }}
         whileInView={{ opacity: 1, x: 0 }}
         viewport={{ once: false, amount: 0.1 }}
         transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+        className="flex-shrink-0"
       >
         <Link to="/">
-          <h1 className="text-2xl font-bold text-[#00f5a0] tracking-tight hover:scale-105 transition-transform duration-300 ease-in-out">STADIPASS</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-[#00f5a0] tracking-tight hover:scale-105 transition-transform duration-300 ease-in-out whitespace-nowrap">STADIPASS</h1>
         </Link>
       </motion.div>
 
       {/* Mobile Menu Toggle Button */}
       <button
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className="md:hidden p-2 text-white hover:text-[#00f5a0] transition-colors"
+        className="md:hidden p-2 text-white hover:text-[#00f5a0] transition-colors flex-shrink-0 ml-2"
         aria-label="Toggle menu"
       >
         {isMobileMenuOpen ? (
@@ -82,7 +83,7 @@ export default function Header() {
       </button>
       
       {/* Desktop Navigation */}
-      <nav className="space-x-6 hidden md:flex font-medium">
+      <nav className="space-x-6 hidden md:flex font-medium flex-1 justify-center">
         {navigationItems.map((item, index) => (
           <motion.div
             key={`${item.to}-${item.anchor || 'nav'}`}
