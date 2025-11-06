@@ -9,6 +9,45 @@ export default function Header() {
   const { isAuthenticated, user, logout } = useAuthStore();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  /**
+   * Navigation Items
+   * 
+   * IMPORTANCE:
+   * - Shared navigation items for desktop and mobile
+   * - Ensures consistency between desktop and mobile menus
+   * - Single source of truth for navigation structure
+   */
+  const navigationItems = [
+    { to: '/', label: 'Home', anchor: null },
+    { to: '/events', label: 'Browse Events', anchor: null },
+    { to: '/', label: 'About Us', anchor: 'about' },
+    { to: '/', label: 'Pricing', anchor: 'pricing' }
+  ];
+
+  /**
+   * Handle Navigation Click
+   * 
+   * IMPORTANCE:
+   * - Handles both anchor links and regular navigation
+   * - Closes mobile menu after navigation
+   * - Smooth scrolling for anchor links
+   */
+  const handleNavClick = (item: typeof navigationItems[0]) => {
+    if (item.anchor) {
+      setIsMobileMenuOpen(false);
+      if (window.location.pathname !== '/') {
+        window.location.href = '/';
+        setTimeout(() => {
+          document.getElementById(item.anchor!)?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      } else {
+        document.getElementById(item.anchor)?.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      setIsMobileMenuOpen(false);
+    }
+  };
+
   return (
     <motion.header
       initial={{ y: -50, opacity: 0 }}
@@ -44,12 +83,7 @@ export default function Header() {
       
       {/* Desktop Navigation */}
       <nav className="space-x-6 hidden md:flex font-medium">
-        {[
-          { to: '/', label: 'Home', anchor: null },
-          { to: '/events', label: 'Browse Events', anchor: null },
-          { to: '/', label: 'About Us', anchor: 'about' },
-          { to: '/', label: 'Pricing', anchor: 'pricing' }
-        ].map((item, index) => (
+        {navigationItems.map((item, index) => (
           <motion.div
             key={`${item.to}-${item.anchor || 'nav'}`}
             initial={{ opacity: 0, y: -20 }}
@@ -210,27 +244,14 @@ export default function Header() {
 
                 {/* Mobile Navigation Links */}
                 <nav className="space-y-4 mb-8">
-                  {[
-                    { to: '/', label: 'Home', anchor: null },
-                    { to: '/events', label: 'Browse Events', anchor: null },
-                    { to: '/', label: 'About Us', anchor: 'about' },
-                    { to: '/', label: 'Pricing', anchor: 'pricing' }
-                  ].map((item) => (
+                  {navigationItems.map((item) => (
                     <div key={`mobile-${item.to}-${item.anchor || 'nav'}`}>
                       {item.anchor ? (
                         <a
                           href={`#${item.anchor}`}
                           onClick={(e) => {
                             e.preventDefault();
-                            setIsMobileMenuOpen(false);
-                            if (window.location.pathname !== '/') {
-                              window.location.href = '/';
-                              setTimeout(() => {
-                                document.getElementById(item.anchor!)?.scrollIntoView({ behavior: 'smooth' });
-                              }, 100);
-                            } else {
-                              document.getElementById(item.anchor)?.scrollIntoView({ behavior: 'smooth' });
-                            }
+                            handleNavClick(item);
                           }}
                           className="block py-3 text-white hover:text-[#00f5a0] transition-colors border-b border-gray-700/50"
                         >
@@ -239,7 +260,7 @@ export default function Header() {
                       ) : (
                         <Link
                           to={item.to}
-                          onClick={() => setIsMobileMenuOpen(false)}
+                          onClick={() => handleNavClick(item)}
                           className="block py-3 text-white hover:text-[#00f5a0] transition-colors border-b border-gray-700/50"
                         >
                           {item.label}
